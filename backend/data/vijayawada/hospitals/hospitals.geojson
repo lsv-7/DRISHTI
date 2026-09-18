@@ -1,0 +1,36 @@
+{
+  "type": "FeatureCollection",
+  "name": "Vijayawada_Hospitals_Demo",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "H01",
+        "name": "DEMO: Vijayawada Government General Hospital (GGH)",
+        "total_beds": 500,
+        "available_beds": 85,
+        "icu_beds_available": 12,
+        "status": "OPERATIONAL"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.6350, 16.5180]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "H02",
+        "name": "DEMO: Ramesh Super Specialty Hospital",
+        "total_beds": 350,
+        "available_beds": 40,
+        "icu_beds_available": 6,
+        "status": "OPERATIONAL"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.6550, 16.5100]
+      }
+    }
+  ]
+}

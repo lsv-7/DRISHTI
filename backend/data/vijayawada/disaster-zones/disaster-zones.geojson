@@ -1,0 +1,31 @@
+{
+  "type": "FeatureCollection",
+  "name": "Vijayawada_Disaster_Zones_Demo",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ZONE_VJ_FLOOD_01",
+        "name": "DEMO: Krishna River Flood Basin Sector A",
+        "disaster_type": "FLOOD",
+        "severity": "CRITICAL",
+        "water_level_meters": 2.8,
+        "evacuation_required": true,
+        "restricted": true,
+        "expected_population": 2500
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [80.6200, 16.4800],
+            [80.6800, 16.4800],
+            [80.6800, 16.5200],
+            [80.6200, 16.5200],
+            [80.6200, 16.4800]
+          ]
+        ]
+      }
+    }
+  ]
+}

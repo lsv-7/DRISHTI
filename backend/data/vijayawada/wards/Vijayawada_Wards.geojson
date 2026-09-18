@@ -1,0 +1,66 @@
+{
+  "type": "FeatureCollection",
+  "name": "Vijayawada_Wards_Demo",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "ward_no": 1,
+        "ward_name": "Vijayawada Administrative Ward 01 — Demo Dataset",
+        "expected_population": 1200
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [80.6000, 16.5000],
+            [80.6500, 16.5000],
+            [80.6500, 16.5500],
+            [80.6000, 16.5500],
+            [80.6000, 16.5000]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ward_no": 2,
+        "ward_name": "Vijayawada Administrative Ward 02 — Demo Dataset",
+        "expected_population": 1800
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [80.6500, 16.5000],
+            [80.7000, 16.5000],
+            [80.7000, 16.5500],
+            [80.6500, 16.5500],
+            [80.6500, 16.5000]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ward_no": 14,
+        "ward_name": "Vijayawada Krishna River Basin Ward 14 — Demo Dataset",
+        "expected_population": 2500
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [80.6200, 16.4800],
+            [80.6800, 16.4800],
+            [80.6800, 16.5200],
+            [80.6200, 16.5200],
+            [80.6200, 16.4800]
+          ]
+        ]
+      }
+    }
+  ]
+}

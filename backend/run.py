@@ -1,5 +1,10 @@
 import os
+import sys
 import uvicorn
+
+# Fix utf-8 encoding for Windows console output
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding='utf-8')
 
 
 def main():
@@ -13,13 +18,13 @@ def main():
     }
 
     if env == "production":
-        print("🚀 Starting FastAPI backend in PRODUCTION mode...")
+        print("Starting FastAPI backend in PRODUCTION mode...")
         config.update({
             "reload": False,
             "workers": 4,
         })
     else:
-        print("🛠️ Starting FastAPI backend in DEVELOPMENT mode with hot-reload...")
+        print("Starting FastAPI backend in DEVELOPMENT mode with hot-reload...")
         config.update({
             "reload": True,
             "workers": 1,

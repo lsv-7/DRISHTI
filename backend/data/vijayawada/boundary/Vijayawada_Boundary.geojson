@@ -1,0 +1,26 @@
+{
+  "type": "FeatureCollection",
+  "name": "Vijayawada_Boundary",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Vijayawada Municipal Corporation Boundary",
+        "state": "Andhra Pradesh",
+        "district": "NTR District"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [80.6000, 16.4700],
+            [80.7000, 16.4700],
+            [80.7000, 16.5500],
+            [80.6000, 16.5500],
+            [80.6000, 16.4700]
+          ]
+        ]
+      }
+    }
+  ]
+}

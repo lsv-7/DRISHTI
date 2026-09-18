@@ -1,0 +1,1519 @@
+Yes — for **Antigravity**, I’d give it one strong implementation prompt that tells it to inspect your existing `.antigravity` context, download/use the Vijayawada geographic data, and integrate it into the existing disaster-response system rather than creating a separate demo.
+
+BBBike can provide an OSM extract in formats including **MBTiles, PMTiles, GeoJSON, SQLite, and Shapefile**, while the India Geodata repository provides the Vijayawada municipal boundary and ward GeoJSON files. ([BBBike Extracts][1])
+
+## 🚀 Master Prompt for Antigravity
+
+Copy this **entire prompt** into Antigravity:
+
+```text
+# TASK: Implement Offline Vijayawada Map & Disaster-Response Geographic Intelligence
+
+You are working on the existing project for:
+
+"Intelligent Disaster Response & Relief Coordination"
+
+The project already contains a complete implementation plan and architecture inside:
+
+.antigravity/
+
+Before changing ANY code, read and understand ALL relevant files:
+
+.antigravity/
+├── Problem description.md
+├── Prompt.md
+├── Rules.md
+├── WorkflowSolution.md
+├── Executionworkflow.md
+├── Workflow image
+├── Agentic AI workflow
+├── assets/
+└── tasks/
+    ├── tasks.md
+    └── TasksCompleted.md
+
+IMPORTANT:
+- WorkflowSolution.md is the architectural source of truth.
+- Executionworkflow.md is the execution-flow source of truth.
+- TasksCompleted.md tells you what is already implemented.
+- Do NOT rewrite working functionality unnecessarily.
+- Inspect the repository structure before coding.
+- Continue from the current implementation state.
+- Follow the existing task-management process.
+
+===========================================================
+OBJECTIVE
+===========================================================
+
+Implement a fully offline-capable Vijayawada geographic layer for the disaster-response platform.
+
+The map must work during the live hackathon demonstration WITHOUT depending on:
+- Google Maps
+- Mapbox online tiles
+- live OpenStreetMap tile requests
+- external routing APIs
+- internet connectivity
+
+The system must contain a local Vijayawada geographic dataset and use it as the geographic foundation for:
+
+1. City map
+2. Vijayawada boundary
+3. Ward boundaries
+4. Roads
+5. Disaster zones
+6. Emergency locations
+7. Shelters
+8. Hospitals
+9. Resources/responders
+10. Evacuation routes
+11. Blocked roads
+12. Dynamic route replanning
+13. Population reconciliation
+14. Missing-person investigation
+15. What-If disaster simulation
+
+===========================================================
+IMPORTANT DATA-SOURCE RULE
+===========================================================
+
+Use actual open geographic data where possible.
+
+Vijayawada administrative geographic data is available from India Geodata:
+
+- Vijayawada_Boundary.geojson
+- Vijayawada_Wards.geojson
+
+The project may also use an OpenStreetMap extract for roads.
+
+A suitable OSM extraction service can provide:
+- MBTiles
+- PMTiles
+- GeoJSON
+- SQLite
+- Shapefile
+- other geographic formats
+
+Do NOT scrape map tiles dynamically during application runtime.
+
+If the repository already contains geographic files, reuse them.
+
+If the repository does not contain them:
+
+1. Create a clearly documented data directory.
+2. Download/import the required geographic files.
+3. Preserve the original source information.
+4. Add a README explaining the source and licensing.
+5. Never silently fabricate real-world geographic data.
+
+===========================================================
+TARGET PROJECT STRUCTURE
+===========================================================
+
+Create/adapt the following structure:
+
+backend/
+├── app/
+│   ├── api/
+│   ├── core/
+│   ├── models/
+│   ├── schemas/
+│   ├── services/
+│   ├── decision_engine/
+│   ├── routing/
+│   ├── simulation/
+│   └── ...
+├── data/
+│   └── vijayawada/
+│       ├── boundary/
+│       │   └── Vijayawada_Boundary.geojson
+│       ├── wards/
+│       │   └── Vijayawada_Wards.geojson
+│       ├── roads/
+│       │   └── roads.geojson
+│       ├── shelters/
+│       │   └── shelters.geojson
+│       ├── hospitals/
+│       │   └── hospitals.geojson
+│       ├── disaster-zones/
+│       │   └── disaster-zones.geojson
+│       └── evacuation/
+│           └── evacuation-routes.geojson
+
+frontend/
+└── ...
+
+If the project already has a better structure, preserve it.
+
+Do not duplicate data unnecessarily.
+
+===========================================================
+1. OFFLINE BASE MAP
+===========================================================
+
+Implement an offline map.
+
+Preferred approach:
+
+Leaflet + locally stored geographic data.
+
+If MBTiles/PMTiles is available and practical for the current frontend architecture,
+use it as the offline basemap.
+
+Otherwise:
+
+Use the Vijayawada roads GeoJSON and administrative GeoJSON as the local map foundation.
+
+The application must still render a useful geographic map even with no internet.
+
+DO NOT use:
+
+https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
+
+as a runtime dependency.
+
+If a fallback online basemap exists, it must be optional and disabled by default
+for the hackathon demo.
+
+===========================================================
+2. MAP INITIALIZATION
+===========================================================
+
+Create a Vijayawada-focused map.
+
+Approximate center:
+
+latitude: 16.5062
+longitude: 80.6480
+
+Do NOT hardcode the map to the user's physical location.
+
+The map should:
+
+- automatically fit to the Vijayawada boundary
+- support zooming
+- support panning
+- support marker interaction
+- support layer toggling
+- support emergency selection
+- support resource selection
+- support disaster-zone selection
+
+Create a reusable component:
+
+VijayawadaMap
+
+or equivalent according to the existing frontend architecture.
+
+===========================================================
+3. MAP LAYERS
+===========================================================
+
+Implement independent toggleable layers:
+
+Layer 1:
+Vijayawada Boundary
+
+Layer 2:
+Ward Boundaries
+
+Layer 3:
+Road Network
+
+Layer 4:
+Disaster Zones
+
+Layer 5:
+Emergency Incidents
+
+Layer 6:
+Shelters
+
+Layer 7:
+Hospitals
+
+Layer 8:
+Responders / Resources
+
+Layer 9:
+Evacuation Routes
+
+Layer 10:
+Blocked / Restricted Roads
+
+Layer 11:
+Missing-Person Search Areas
+
+Layer 12:
+Population Reconciliation Zones
+
+The UI must allow the coordinator to turn layers on/off.
+
+===========================================================
+4. DISASTER ZONES
+===========================================================
+
+Create a geographic disaster-zone model.
+
+Each zone should support:
+
+{
+    id,
+    name,
+    disaster_type,
+    severity,
+    geometry,
+    status,
+    water_level,
+    evacuation_required,
+    restricted,
+    created_at,
+    updated_at
+}
+
+Supported disaster types:
+
+FLOOD
+CYCLONE
+EARTHQUAKE
+LANDSLIDE
+FIRE
+TSUNAMI
+DROUGHT
+HEATWAVE
+URBAN_DISASTER
+MULTI_HAZARD
+OTHER
+
+For the demo, create realistic-looking DEMO flood zones around the selected
+Vijayawada area.
+
+IMPORTANT:
+
+Clearly label these as DEMO/SIMULATED disaster zones.
+
+Do NOT claim that the simulated flood boundary represents an actual current flood.
+
+===========================================================
+5. EMERGENCY MARKERS
+===========================================================
+
+Display emergency incidents on the map.
+
+Each emergency marker should contain:
+
+- emergency ID
+- type
+- severity
+- priority
+- people affected
+- medical need
+- vulnerable people
+- location
+- status
+- assigned resource
+- ETA
+
+Clicking the marker should open a detailed emergency panel.
+
+Use the existing Emergency API rather than creating a second independent
+emergency system.
+
+===========================================================
+6. PERSON-CENTRIC RISK
+===========================================================
+
+Integrate the existing vulnerability profile system.
+
+Relevant factors may include:
+
+- age group
+- mobility
+- disability
+- medical need
+- medical conditions
+- ability to swim
+- evacuation difficulty
+- accessibility requirements
+- dependency on medication/equipment
+- whether the person is travelling alone
+- dependents
+
+Do NOT arbitrarily assign higher risk based on gender.
+
+Gender-specific considerations may only be used when operationally justified,
+such as safeguarding or accommodation requirements.
+
+Do NOT use the map itself to determine a person's medical priority.
+
+The deterministic decision engine remains responsible for priority calculation.
+
+The map only visualizes the resulting priority and geographic context.
+
+===========================================================
+7. ROAD NETWORK
+===========================================================
+
+Load a local Vijayawada road network.
+
+Preferred:
+
+roads.geojson
+
+Create a graph from the road network.
+
+Use:
+
+NetworkX
+
+or the project's existing routing implementation.
+
+Each road should support:
+
+- road ID
+- geometry
+- name
+- status
+- speed/cost
+- accessibility
+- blocked status
+
+Supported road status:
+
+OPEN
+PARTIALLY_BLOCKED
+BLOCKED
+RESTRICTED
+UNKNOWN
+
+===========================================================
+8. LOCAL ROUTING
+===========================================================
+
+Do NOT call Google Maps or another external routing service.
+
+Implement local route calculation.
+
+Input:
+
+origin
+destination
+constraints
+blocked roads
+
+Output:
+
+route
+distance
+estimated travel time
+blocked segments
+route status
+reason
+
+Example:
+
+{
+    "route_status": "FEASIBLE",
+    "distance_meters": 2400,
+    "eta_minutes": 8,
+    "blocked_segments": [],
+    "route": [...]
+}
+
+When a road becomes BLOCKED:
+
+1. identify affected assignments
+2. recalculate route
+3. find alternative route
+4. calculate new ETA
+5. create a replan proposal
+6. notify the coordinator
+7. wait for human approval
+8. apply the new assignment
+
+Do NOT silently modify consequential assignments.
+
+===========================================================
+9. DYNAMIC REPLANNING
+===========================================================
+
+Implement:
+
+POST /api/v1/decision/replan
+
+The trigger can be:
+
+ROAD_STATUS_CHANGED
+RESOURCE_STATUS_CHANGED
+NEW_EMERGENCY
+RESOURCE_FAILURE
+DISASTER_ZONE_CHANGED
+
+The system should calculate:
+
+- affected emergencies
+- affected responders
+- current routes
+- alternative routes
+- new ETA
+- resource conflicts
+- priority changes
+
+Return a replan proposal.
+
+Example:
+
+{
+    "replan_id": "RP-1001",
+    "trigger": "ROAD_STATUS_CHANGED",
+    "affected_assignments": [...],
+    "alternative_routes": [...],
+    "requires_approval": true
+}
+
+Add:
+
+POST /api/v1/decision/replan/{id}/approve
+
+with:
+
+{
+    "approved": true,
+    "approved_by": "COORD-001",
+    "approval_reason": "Alternative route avoids flooded bridge"
+}
+
+===========================================================
+10. SHELTERS
+===========================================================
+
+Add local demo shelter locations.
+
+Each shelter should contain:
+
+- ID
+- name
+- location
+- capacity
+- occupied
+- available
+- accessibility
+- amenities
+- status
+
+Example:
+
+{
+    "id": "S01",
+    "name": "Demo Relief Shelter 01",
+    "latitude": ...,
+    "longitude": ...,
+    "capacity": 300,
+    "occupied": 180,
+    "available": 120,
+    "status": "OPEN"
+}
+
+IMPORTANT:
+
+Clearly mark fabricated/demo shelters as DEMO DATA unless their source is verified.
+
+Do not claim that a real facility currently has a particular emergency capacity
+unless that information is verified.
+
+===========================================================
+11. HOSPITALS
+===========================================================
+
+Create hospital map markers.
+
+Support:
+
+- hospital ID
+- name
+- location
+- available beds
+- emergency beds
+- ICU beds
+- ambulance slots
+- medical team availability
+
+The map should show hospital capacity visually.
+
+Use demo capacity values unless verified real-time data exists.
+
+Label them as DEMO operational data.
+
+===========================================================
+12. RESOURCE / RESPONDER MAP
+===========================================================
+
+Show:
+
+- rescue teams
+- boat teams
+- ambulances
+- medical teams
+- fire teams
+- police teams
+- volunteer teams
+- evacuation vehicles
+- drones
+
+Marker popup:
+
+Resource ID
+Type
+Capabilities
+Availability
+Current assignment
+ETA
+
+Supported availability:
+
+AVAILABLE
+BUSY
+UNAVAILABLE
+OFFLINE
+MAINTENANCE
+RESERVED
+
+===========================================================
+13. EVACUATION ROUTES
+===========================================================
+
+Create evacuation routes using local road data.
+
+Display:
+
+- recommended evacuation route
+- alternate route
+- blocked route
+- shelter destination
+
+The coordinator should be able to click an emergency and see:
+
+Emergency
+    ↓
+Nearest suitable resource
+    ↓
+Recommended route
+    ↓
+Shelter / hospital
+    ↓
+ETA
+
+===========================================================
+14. POPULATION RECONCILIATION
+===========================================================
+
+Implement the population reconciliation functionality from WorkflowSolution.md.
+
+The system should compare:
+
+Expected population
+vs
+Accounted population
+
+Sources:
+
+- registered residents
+- shelter registrations
+- confirmed safe reports
+- hospital admissions
+- evacuation records
+- responder sightings
+- citizen check-ins
+
+DO NOT interpret:
+
+expected population - observed population
+
+as proof that individual people are missing.
+
+It is only a reconciliation signal.
+
+Create:
+
+POST /api/v1/population/accounting/calculate
+
+Return:
+
+{
+    "zone_id": "ZONE-01",
+    "expected_population": 1000,
+    "accounted_population": 930,
+    "gap": 70,
+    "status": "ATTENTION",
+    "requires_investigation": true
+}
+
+Display the affected zone on the map.
+
+===========================================================
+15. MISSING PERSON WORKFLOW
+===========================================================
+
+Do NOT automatically create confirmed missing-person records from a population
+gap.
+
+Instead:
+
+Population gap detected
+        ↓
+Investigation created
+        ↓
+Evidence collected
+        ↓
+Potential missing candidates identified
+        ↓
+Human verification
+        ↓
+Confirmed missing / accounted / false alert
+
+Supported statuses:
+
+REPORTED
+SEARCHING
+FOUND
+CLOSED
+
+Investigation statuses:
+
+OPEN
+UNDER_VERIFICATION
+SEARCHING
+RESOLVED
+CLOSED
+
+Display search areas on the map.
+
+===========================================================
+16. WHAT-IF DISASTER SIMULATOR
+===========================================================
+
+Implement a map-based What-If simulator.
+
+The coordinator should be able to choose:
+
+BLOCK_ROAD
+DISABLE_RESOURCE
+INCREASE_EMERGENCIES
+REDUCE_SHELTER_CAPACITY
+INCREASE_FLOOD_SEVERITY
+ADD_VULNERABLE_CLUSTER
+ADD_RESOURCE
+CLOSE_SHELTER
+INCREASE_MEDICAL_DEMAND
+
+Workflow:
+
+Current State
+     ↓
+Create Snapshot
+     ↓
+Apply Scenario
+     ↓
+Run Decision Engine
+     ↓
+Calculate New Routes
+     ↓
+Calculate Resource Allocation
+     ↓
+Calculate Population Impact
+     ↓
+Compare With Current State
+     ↓
+Show Results
+     ↓
+Human Approves
+     ↓
+Apply OR Cancel
+
+CRITICAL:
+
+Running a simulation must NOT modify the live operational state.
+
+Only:
+
+POST /api/v1/simulations/{id}/apply
+
+may apply an approved scenario.
+
+The UI must clearly distinguish:
+
+LIVE STATE
+
+from
+
+SIMULATION STATE
+
+===========================================================
+17. CONFIDENCE-AWARE SITUATIONAL LAYER
+===========================================================
+
+Every operational observation may contain:
+
+source_type
+verification_status
+confidence_level
+timestamp
+location
+evidence
+
+Sources:
+
+CITIZEN
+RESPONDER
+AUTHORITY
+SENSOR
+EXTERNAL_FEED
+SYSTEM
+
+Verification:
+
+UNVERIFIED
+PARTIALLY_VERIFIED
+VERIFIED
+REJECTED
+CONFLICTING
+
+Confidence:
+
+VERY_LOW
+LOW
+MEDIUM
+HIGH
+VERY_HIGH
+
+Do not represent heuristic confidence as a statistically validated probability.
+
+===========================================================
+18. ZONE POLICIES
+===========================================================
+
+When the user selects a disaster zone, display relevant policies.
+
+Categories:
+
+EVACUATION
+SHELTER
+RECONSTRUCTION
+PREVENTION
+OPERATIONAL
+
+Examples:
+
+- evacuation guidance
+- restricted area instructions
+- shelter instructions
+- water safety
+- road restrictions
+- emergency contacts
+- preparedness guidance
+- resilience recommendations
+- reconstruction guidance
+
+Do NOT invent legal requirements.
+
+For legal or regulatory content:
+
+Store:
+
+legal_reference
+
+and clearly distinguish:
+
+OFFICIAL_REQUIREMENT
+OFFICIAL_RECOMMENDATION
+EDUCATIONAL_GUIDANCE
+DEMO_POLICY
+
+===========================================================
+19. RESILIENCE / RECONSTRUCTION
+===========================================================
+
+Add a resilience panel for post-disaster planning.
+
+Topics may include:
+
+- rainwater harvesting
+- stormwater drainage
+- flood-resilient construction
+- safe electrical systems
+- emergency access
+- evacuation routes
+- accessibility
+- drainage maintenance
+- water conservation
+- hazard-aware construction
+
+Do NOT present generic recommendations as local building-law requirements.
+
+Use labels:
+
+REQUIRED BY AUTHORITY
+OFFICIAL GUIDANCE
+RECOMMENDATION
+EDUCATIONAL
+
+For the hackathon demo, demo resilience recommendations may be displayed,
+but they must be clearly marked as demo/educational unless backed by an
+authoritative source.
+
+===========================================================
+20. COMMAND CENTER UI
+===========================================================
+
+Upgrade the React command center map.
+
+Layout:
+
+------------------------------------------------------
+| Header                                             |
+------------------------------------------------------
+| Sidebar       |             MAP                   |
+|               |                                   |
+| Emergencies   |    Emergency markers              |
+| Resources     |    Disaster zones                 |
+| Shelters      |    Roads                          |
+| Hospitals     |    Evacuation routes              |
+| Missing       |    Responders                     |
+| Population    |                                   |
+------------------------------------------------------
+| Bottom/Right panel: Selected Incident Details      |
+------------------------------------------------------
+
+Add:
+
+Map Layers
+Filters
+Legend
+Search
+Emergency details
+Resource details
+Route details
+Simulation mode
+Population alerts
+Missing-person alerts
+Policy panel
+
+===========================================================
+21. MAP LEGEND
+===========================================================
+
+Create a clear legend.
+
+Include:
+
+Emergency
+High Priority Emergency
+Medical Emergency
+Responder
+Ambulance
+Shelter
+Hospital
+Blocked Road
+Restricted Road
+Evacuation Route
+Flood Zone
+Population Alert
+Missing-Person Search Area
+
+Do not rely solely on color.
+
+Use icons, labels, borders, and patterns where practical.
+
+===========================================================
+22. OFFLINE BEHAVIOR
+===========================================================
+
+When internet is unavailable:
+
+The command center should still display:
+
+- local map
+- roads
+- wards
+- disaster zones
+- cached emergencies
+- cached resources
+- cached shelters
+- cached hospitals
+- cached policies
+
+The mobile app should support:
+
+ONLINE
+LOW_CONNECTIVITY
+OFFLINE
+
+Offline emergency reports must enter the local queue.
+
+Use:
+
+client_operation_id
+
+or:
+
+operation_id
+
+to guarantee idempotent synchronization.
+
+When connectivity returns:
+
+local queue
+    ↓
+sync
+    ↓
+server validation
+    ↓
+deduplication
+    ↓
+database
+    ↓
+WebSocket update
+
+===========================================================
+23. RADIO SIMULATOR
+===========================================================
+
+If the existing architecture includes the radio simulator:
+
+Implement it as a SOFTWARE SIMULATOR only.
+
+DO NOT claim physical LoRa hardware.
+
+Transport abstraction:
+
+InternetTransport
+SimulatedRadioTransport
+OfflineQueueTransport
+
+The simulator may display:
+
+source node
+destination node
+packet
+latency
+packet loss
+store-and-forward
+delivery status
+
+Example:
+
+CITIZEN DEVICE
+      ↓
+SIMULATED RADIO
+      ↓
+RESPONDER NODE
+      ↓
+COMMAND CENTER
+
+Clearly label:
+
+"SIMULATED RADIO TRANSPORT"
+
+===========================================================
+24. DATABASE / POSTGIS
+===========================================================
+
+If PostGIS is already configured:
+
+Use spatial columns for:
+
+- emergency locations
+- resources
+- shelters
+- hospitals
+- roads
+- zones
+
+Recommended:
+
+POINT
+LINESTRING
+POLYGON
+
+Use spatial queries for:
+
+- nearest resource
+- emergency inside zone
+- emergency near blocked road
+- nearest shelter
+- nearest hospital
+- population zone
+- affected assignments
+
+Do not duplicate geographic logic inside frontend code.
+
+===========================================================
+25. API ENDPOINTS
+===========================================================
+
+Use the existing API architecture.
+
+Ensure the following capabilities exist:
+
+GET /api/v1/map/vijayawada
+
+GET /api/v1/map/layers
+
+GET /api/v1/map/roads
+
+GET /api/v1/map/zones
+
+GET /api/v1/map/shelters
+
+GET /api/v1/map/hospitals
+
+GET /api/v1/map/resources
+
+GET /api/v1/map/emergencies
+
+POST /api/v1/zones/resolve
+
+POST /api/v1/decision/resources/match
+
+POST /api/v1/decision/replan
+
+POST /api/v1/population/accounting/calculate
+
+POST /api/v1/missing-person/investigations
+
+POST /api/v1/simulations
+
+POST /api/v1/simulations/{id}/run
+
+POST /api/v1/simulations/{id}/apply
+
+Do not create duplicate endpoints if equivalent endpoints already exist.
+
+===========================================================
+26. SEED DATA
+===========================================================
+
+Create deterministic seed data for the demo.
+
+Use the existing emergency examples:
+
+E101:
+type = MEDICAL_RESCUE
+severity = 5
+people_affected = 4
+latitude = 16.5062
+longitude = 80.6480
+
+E102:
+type = RESCUE
+severity = 4
+people_affected = 8
+latitude = 16.5100
+longitude = 80.6500
+
+Resources:
+
+R01:
+type = RESCUE_TEAM
+capabilities = [RESCUE, MEDICAL]
+capacity = 6
+available = true
+
+R02:
+type = BOAT_TEAM
+capabilities = [WATER_RESCUE]
+capacity = 10
+available = true
+
+Add additional demo:
+
+- shelters
+- hospitals
+- roads
+- blocked road
+- flood zone
+- responders
+- missing-person investigation
+- population discrepancy
+
+All fabricated operational values must be clearly identified as DEMO DATA.
+
+===========================================================
+27. DEMO SCENARIO
+===========================================================
+
+The complete live demo should work as follows:
+
+STEP 1
+Open Command Center.
+
+Map automatically loads Vijayawada.
+
+STEP 2
+Show Vijayawada boundary and ward layers.
+
+STEP 3
+Activate Flood Disaster Zone.
+
+STEP 4
+Show active emergencies.
+
+STEP 5
+Open E101.
+
+Show:
+
+4 people affected
+elderly person
+limited mobility
+medical need
+cannot swim
+high environmental risk
+
+STEP 6
+System calculates deterministic priority.
+
+Show explanation:
+
+Why this emergency received this priority.
+
+STEP 7
+Resource engine recommends R02 because:
+
+water rescue capability
+capacity
+location
+route feasibility
+
+STEP 8
+Coordinator approves assignment.
+
+STEP 9
+Responder receives assignment.
+
+STEP 10
+Simulate ROAD R12 becoming BLOCKED.
+
+STEP 11
+System detects affected assignment.
+
+STEP 12
+Routing engine finds alternative route.
+
+STEP 13
+System produces replan proposal.
+
+STEP 14
+Coordinator approves.
+
+STEP 15
+Population reconciliation detects:
+
+Expected population
+vs
+Accounted population
+
+STEP 16
+System creates a population investigation.
+
+STEP 17
+Coordinator opens Missing-Person workflow.
+
+STEP 18
+Potential candidate is shown.
+
+STEP 19
+Human verifies the case.
+
+STEP 20
+Open What-If Simulator.
+
+Scenario:
+
+BLOCK_ROAD
+
+STEP 21
+Simulation runs without modifying live state.
+
+STEP 22
+Show:
+
+before route
+after route
+ETA difference
+affected assignments
+
+STEP 23
+Coordinator chooses APPLY.
+
+STEP 24
+Live system updates.
+
+STEP 25
+Open Zone Policies.
+
+Show:
+
+evacuation
+water safety
+shelter
+operational guidance
+reconstruction/resilience
+
+STEP 26
+Demonstrate offline mode.
+
+Disable network.
+
+Map continues working.
+
+Create emergency.
+
+Show:
+
+Saved locally
+Pending Sync
+
+Restore network.
+
+Show:
+
+Sync
+Server acknowledgement
+Command-center update
+
+===========================================================
+28. AGENTIC AI INTEGRATION
+===========================================================
+
+Preserve the existing LangGraph architecture.
+
+Agents may:
+
+- understand situation
+- fetch policies
+- calculate priority
+- match resources
+- plan routes
+- propose replanning
+- run simulations
+- analyze population reconciliation
+- analyze missing-person evidence
+- generate explanations
+- generate reports
+
+BUT:
+
+LLM must NOT directly modify critical database state.
+
+Use:
+
+LLM/Agents
+    ↓
+Structured tool call
+    ↓
+Deterministic service
+    ↓
+Validation
+    ↓
+Human approval where required
+    ↓
+Database mutation
+
+The deterministic engine must handle:
+
+- priority calculation
+- route calculation
+- resource constraints
+- capacity
+- population arithmetic
+- simulation state
+- safety constraints
+
+The LLM handles:
+
+- explanation
+- summarization
+- natural-language reasoning
+- workflow orchestration
+
+===========================================================
+29. TESTING
+===========================================================
+
+Before declaring implementation complete, test:
+
+1. Map loads without internet.
+2. Vijayawada boundary loads.
+3. Ward layer loads.
+4. Roads load.
+5. Emergency markers load.
+6. Resource markers load.
+7. Shelter markers load.
+8. Hospital markers load.
+9. Disaster zones load.
+10. Road blocking works.
+11. Local routing works.
+12. Dynamic replanning works.
+13. Population reconciliation works.
+14. Missing-person workflow works.
+15. What-If simulation does not modify live state.
+16. Apply simulation modifies state only after approval.
+17. Offline emergency creation works.
+18. Sync works.
+19. Duplicate sync operations are idempotent.
+20. WebSocket updates reach command center.
+21. Existing authentication still works.
+22. Existing functionality is not broken.
+
+Run actual tests.
+
+Never write:
+
+"Tests passed"
+
+unless the tests were actually executed.
+
+===========================================================
+30. TASK MANAGEMENT
+===========================================================
+
+After implementation:
+
+1. Update TasksCompleted.md with completed work.
+2. Update Tasks.md with remaining work.
+3. Record:
+   - files changed
+   - APIs added
+   - database changes
+   - geographic datasets added
+   - tests executed
+   - known limitations
+   - demo instructions
+
+Do not mark unfinished work as completed.
+
+===========================================================
+31. FINAL QUALITY REQUIREMENT
+===========================================================
+
+The final system should feel like:
+
+A real disaster-response command center for Vijayawada.
+
+NOT:
+
+A generic map demo.
+
+The map must be connected to the actual disaster-response workflow:
+
+Citizen
+   ↓
+Emergency
+   ↓
+Person-centric Risk
+   ↓
+Priority
+   ↓
+Resource Matching
+   ↓
+Route
+   ↓
+Assignment
+   ↓
+Road Change
+   ↓
+Dynamic Replanning
+   ↓
+Population Reconciliation
+   ↓
+Missing-Person Investigation
+   ↓
+What-If Simulation
+   ↓
+Human Approval
+   ↓
+Updated Response
+
+Everything should operate on the same geographic state.
+
+Do not create disconnected mock screens.
+
+Do not create duplicate business logic.
+
+Do not replace working architecture unnecessarily.
+
+Prioritize a stable, demonstrable MVP over unnecessary complexity.
+
+===========================================================
+START NOW
+===========================================================
+
+First:
+
+1. Inspect repository.
+2. Read all .antigravity files.
+3. Read TasksCompleted.md.
+4. Read Tasks.md.
+5. Determine what map/geographic functionality already exists.
+6. Determine frontend map implementation.
+7. Determine backend geographic implementation.
+8. Determine database/PostGIS status.
+9. Determine whether geographic files already exist.
+10. Create an implementation plan.
+11. Implement incrementally.
+12. Test after each major component.
+13. Update TasksCompleted.md.
+14. Continue until the complete offline Vijayawada map workflow is functional.
+
+Do NOT ask unnecessary questions.
+
+Make reasonable implementation decisions based on the existing architecture and files.
+
+If a geographic dataset cannot be automatically downloaded, do not fabricate it.
+Instead create the required directory structure and clearly document the exact
+dataset that needs to be placed there.
+
+The final goal is a completely self-contained Vijayawada disaster-response
+demonstration that can run with the internet disconnected.
+```
+
+### One important change I'd make
+
+Don't tell Antigravity to treat the **ward GeoJSON as the actual latest ward configuration**. The India Geodata repository currently provides the Vijayawada boundary and ward files, but those are geographic datasets with their own source/version context. ([Yashveeeeeeer][2])
+
+For the hackathon, I'd have the app label the geographic layer something like:
+
+> **Vijayawada Administrative Wards — Demo Dataset**
+
+rather than making a claim about the current official ward delimitation.
+
+And for the **street map**, use an OSM extract rather than trying to derive roads from the ward/boundary GeoJSON. BBBike explicitly supports extracting OSM areas into formats such as GeoJSON, MBTiles and PMTiles. ([BBBike Extracts][1])
+
+That separation will make your architecture much cleaner:
+
+```text
+Vijayawada Boundary
+        │
+        ├── Ward GeoJSON
+        │
+        └── OSM Road/Map Data
+                  │
+                  ▼
+            Leaflet Map
+                  │
+        ┌─────────┴──────────┐
+        ▼                    ▼
+Static Geography       Live Demo State
+                       ├── Emergencies
+                       ├── Resources
+                       ├── Shelters
+                       ├── Hospitals
+                       ├── Flood Zones
+                       ├── Blocked Roads
+                       └── Evacuation Routes
+```
+
+This is the version I'd use for your **live PS-2 demonstration**, because the geographic data becomes the foundation for the actual routing, emergency, resource, simulation, and replanning workflows rather than just being a background image.
+
+[1]: https://extract.bbbike.org/?utm_source=chatgpt.com "BBBike extracts OpenStreetMap (OSM, Garmin, Shapefile etc.)"
+[2]: https://yashveeeeeeer.github.io/india-geodata/?utm_source=chatgpt.com "Download India’s Open Geospatial Data | India Geodata"

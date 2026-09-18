@@ -14,3 +14,6 @@ Thumbs.db
 # Secrets
 *.pem
 *.key
+
+# Pytest
+.pytest_cache/

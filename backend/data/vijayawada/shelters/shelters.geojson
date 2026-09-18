@@ -1,0 +1,38 @@
+{
+  "type": "FeatureCollection",
+  "name": "Vijayawada_Shelters_Demo",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "S01",
+        "name": "DEMO: Vijayawada Municipal Indoor Relief Shelter",
+        "capacity": 300,
+        "occupied": 180,
+        "available": 120,
+        "status": "OPEN",
+        "amenities": ["MEDICAL_FIRST_AID", "DRINKING_WATER", "WHEELCHAIR_RAMP"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.6400, 16.5120]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "S02",
+        "name": "DEMO: NTR Memorial Public Relief Center",
+        "capacity": 450,
+        "occupied": 210,
+        "available": 240,
+        "status": "OPEN",
+        "amenities": ["FOOD_DISTRIBUTION", "CHILD_CARE"]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.6650, 16.5250]
+      }
+    }
+  ]
+}

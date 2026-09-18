@@ -1,0 +1,2450 @@
+
+---
+
+# 1. Global API conventions
+
+### Base URL
+
+```text
+/api/v1
+```
+
+### Authentication
+
+Since Firebase Authentication is already configured on the frontend:
+
+```http
+Authorization: Bearer <FIREBASE_ID_TOKEN>
+Content-Type: application/json
+```
+
+The backend verifies the Firebase token and derives:
+
+```text
+firebase_uid
+email
+role
+```
+
+Application roles remain:
+
+```text
+CITIZEN
+RESPONDER
+COORDINATOR
+ADMIN
+MEDICAL
+SHELTER_MANAGER
+```
+
+The backend should **never trust `role` supplied by the client**.
+
+---
+
+# 2. User/Profile APIs
+
+The updated architecture stores a citizen's vulnerability profile and uses it during emergency prioritization. 
+
+## 2.1 Create/Update Vulnerability Profile
+
+```http
+PUT /api/v1/users/me/vulnerability-profile
+```
+
+### Request
+
+```json
+{
+  "age_group": "ELDERLY",
+  "gender": "MALE",
+  "can_swim": false,
+  "has_disability": false,
+  "disability_type": null,
+  "medical_conditions": [
+    "HYPERTENSION"
+  ],
+  "mobility_level": "LIMITED"
+}
+```
+
+### Response
+
+```json
+{
+  "user_id": "USR-1001",
+  "vulnerability_profile": {
+    "age_group": "ELDERLY",
+    "gender": "MALE",
+    "can_swim": false,
+    "has_disability": false,
+    "disability_type": null,
+    "medical_conditions": [
+      "HYPERTENSION"
+    ],
+    "mobility_level": "LIMITED"
+  },
+  "vulnerability_score": 78,
+  "updated_at": "2026-09-18T10:30:00Z"
+}
+```
+
+---
+
+# 3. Emergency Creation
+
+This is the most important request in the entire system.
+
+The emergency lifecycle is:
+
+```text
+CREATED
+→ SYNCED
+→ VALIDATED
+→ PRIORITIZED
+→ POLICY_SURFACED
+→ ASSIGNMENT_PENDING
+→ ASSIGNED
+→ IN_PROGRESS
+→ RESOLVED
+```
+
+This is defined in the updated workflow. 
+
+## 3.1 Create Emergency — Online
+
+```http
+POST /api/v1/emergencies
+```
+
+### Complete request payload
+
+```json
+{
+  "client_operation_id": "OP-EMG-8f31a2",
+  "reporter_id": "USR-1001",
+
+  "type": "MEDICAL_RESCUE",
+
+  "severity": 5,
+
+  "people_affected": 4,
+
+  "medical_need": "HIGH",
+
+  "vulnerable_people": 2,
+
+  "description": "Family trapped inside flooded house. Elderly person requires medical assistance.",
+
+  "latitude": 16.5062,
+  "longitude": 80.6480,
+
+  "location_accuracy_meters": 8,
+
+  "disaster_type": "FLOOD",
+
+  "media": [
+    {
+      "media_id": "MED-001",
+      "type": "IMAGE",
+      "url": "https://example.com/flood.jpg"
+    }
+  ],
+
+  "vulnerability_profile_snapshot": {
+    "age_group": "ELDERLY",
+    "gender": "MALE",
+    "can_swim": false,
+    "has_disability": false,
+    "disability_type": null,
+    "medical_conditions": [
+      "HYPERTENSION"
+    ],
+    "mobility_level": "LIMITED"
+  },
+
+  "reported_at": "2026-09-18T10:35:00Z",
+
+  "client": {
+    "platform": "FLUTTER",
+    "app_version": "1.0.0",
+    "connectivity_state": "ONLINE"
+  }
+}
+```
+
+### Response
+
+```json
+{
+  "id": "E101",
+  "status": "CREATED",
+  "sync_status": "SYNCED",
+
+  "reporter_id": "USR-1001",
+
+  "type": "MEDICAL_RESCUE",
+  "severity": 5,
+  "people_affected": 4,
+  "medical_need": "HIGH",
+
+  "location": {
+    "latitude": 16.5062,
+    "longitude": 80.6480,
+    "accuracy_meters": 8
+  },
+
+  "disaster_zone": {
+    "id": "Z04",
+    "name": "Ward 7 - Flood Zone Alpha",
+    "zone_type": "FLOOD"
+  },
+
+  "priority": {
+    "score": 96,
+    "level": "CRITICAL",
+    "reasons": [
+      "Critical severity",
+      "Medical assistance required",
+      "Elderly person",
+      "Reporter cannot swim",
+      "Limited mobility",
+      "Flood environment"
+    ]
+  },
+
+  "policies_available": true,
+
+  "created_at": "2026-09-18T10:35:04Z"
+}
+```
+
+The profile snapshot is important because the emergency should preserve the vulnerability information that existed **at the time of reporting**, rather than depending entirely on a later profile change. The offline design also explicitly calls for the vulnerability profile snapshot to accompany the emergency. 
+
+---
+
+# 4. Emergency Details
+
+```http
+GET /api/v1/emergencies/{emergency_id}
+```
+
+No body.
+
+Example:
+
+```http
+GET /api/v1/emergencies/E101
+```
+
+Response:
+
+```json
+{
+  "id": "E101",
+  "status": "ASSIGNMENT_PENDING",
+
+  "type": "MEDICAL_RESCUE",
+  "severity": 5,
+  "people_affected": 4,
+  "medical_need": "HIGH",
+
+  "location": {
+    "latitude": 16.5062,
+    "longitude": 80.6480
+  },
+
+  "zone_id": "Z04",
+
+  "priority": {
+    "score": 96,
+    "level": "CRITICAL",
+    "reasons": [
+      "Critical severity",
+      "Medical assistance required",
+      "Elderly person",
+      "Cannot swim",
+      "Limited mobility"
+    ]
+  },
+
+  "vulnerability_factors": {
+    "age_group": "ELDERLY",
+    "can_swim": false,
+    "mobility_level": "LIMITED",
+    "medical_conditions": [
+      "HYPERTENSION"
+    ]
+  },
+
+  "created_at": "2026-09-18T10:35:04Z",
+  "updated_at": "2026-09-18T10:40:00Z"
+}
+```
+
+---
+
+# 5. Priority Calculation Request
+
+The architecture uses an explainable weighted heuristic rather than a clinically validated triage model. 
+
+```http
+POST /api/v1/decision/priority/calculate
+```
+
+### Request
+
+```json
+{
+  "emergency_id": "E101",
+
+  "severity": 5,
+  "people_affected": 4,
+  "medical_need": "HIGH",
+
+  "waiting_time_minutes": 6,
+
+  "accessibility": {
+    "road_access": "LIMITED",
+    "building_access": "DIFFICULT",
+    "evacuation_difficulty": "HIGH"
+  },
+
+  "disaster_context": {
+    "disaster_type": "FLOOD",
+    "water_level": "HIGH"
+  },
+
+  "vulnerability_profile": {
+    "age_group": "ELDERLY",
+    "gender": "MALE",
+    "can_swim": false,
+    "has_disability": false,
+    "disability_type": null,
+    "medical_conditions": [
+      "HYPERTENSION"
+    ],
+    "mobility_level": "LIMITED"
+  }
+}
+```
+
+### Response
+
+```json
+{
+  "emergency_id": "E101",
+
+  "priority_score": 96,
+
+  "priority_level": "CRITICAL",
+
+  "breakdown": {
+    "severity_score": 30,
+    "affected_people_score": 15,
+    "medical_need_score": 20,
+    "vulnerability_score": 18,
+    "waiting_time_score": 5,
+    "accessibility_score": 8
+  },
+
+  "vulnerability_breakdown": {
+    "age_factor": 7,
+    "cannot_swim_factor": 4,
+    "disability_factor": 0,
+    "mobility_factor": 4,
+    "medical_condition_factor": 3,
+    "gender_specific_factor": 0
+  },
+
+  "reasons": [
+    "Critical severity",
+    "Medical assistance required",
+    "Elderly person",
+    "Cannot swim in flood conditions",
+    "Limited mobility",
+    "Hypertension",
+    "Waiting time: 6 minutes"
+  ],
+
+  "algorithm_version": "priority-v1",
+
+  "computed_at": "2026-09-18T10:41:00Z"
+}
+```
+
+---
+
+# 6. Disaster Zone Resolution
+
+The architecture resolves GPS coordinates to a PostGIS disaster zone. 
+
+```http
+POST /api/v1/zones/resolve
+```
+
+### Request
+
+```json
+{
+  "latitude": 16.5062,
+  "longitude": 80.6480,
+  "disaster_type": "FLOOD"
+}
+```
+
+### Response
+
+```json
+{
+  "matched": true,
+
+  "zone": {
+    "id": "Z04",
+    "name": "Ward 7 - Flood Zone Alpha",
+    "zone_type": "FLOOD",
+    "jurisdiction": "Krishna District, Andhra Pradesh"
+  },
+
+  "active_disaster_types": [
+    "FLOOD"
+  ]
+}
+```
+
+If no zone:
+
+```json
+{
+  "matched": false,
+  "zone": null,
+  "reason": "NO_ACTIVE_ZONE_MATCH"
+}
+```
+
+---
+
+# 7. Fetch Zone Policies
+
+Policies are filtered by role. Citizens receive simple safety guidance, responders receive operational policies, and coordinators receive the complete set. 
+
+```http
+GET /api/v1/zones/{zone_id}/policies?role=CITIZEN
+```
+
+### Response
+
+```json
+{
+  "zone_id": "Z04",
+
+  "zone_name": "Ward 7 - Flood Zone Alpha",
+
+  "policies": [
+    {
+      "id": "POL-001",
+      "policy_type": "EVACUATION",
+      "title": "Flood Evacuation Rule",
+      "description": "Evacuate to the designated shelter when the authority issues an evacuation order.",
+      "source": "District Disaster Management Authority",
+      "legal_reference": null,
+      "applicable_roles": [
+        "CITIZEN"
+      ],
+      "reconstruction_norm": false,
+      "effective_from": "2026-09-18T00:00:00Z",
+      "effective_to": null,
+      "status": "ACTIVE"
+    }
+  ]
+}
+```
+
+---
+
+# 8. Policy Notification
+
+When a relevant policy is triggered:
+
+```http
+POST /api/v1/notifications/policy
+```
+
+### Request
+
+```json
+{
+  "recipient_id": "USR-1001",
+
+  "zone_id": "Z04",
+
+  "policy_id": "POL-001",
+
+  "notification_type": "ZONE_POLICY_ALERT",
+
+  "title": "Flood Safety Alert",
+
+  "message": "Your area is under an active flood safety policy. Follow official evacuation instructions and proceed to the designated shelter if instructed.",
+
+  "severity": "HIGH",
+
+  "source": "District Disaster Management Authority",
+
+  "created_at": "2026-09-18T10:45:00Z"
+}
+```
+
+---
+
+# 9. Resource Search
+
+The resource matching engine considers capability, vulnerability fit, availability, capacity, route feasibility and ETA. 
+
+```http
+POST /api/v1/decision/resources/match
+```
+
+### Request
+
+```json
+{
+  "emergency_id": "E101",
+
+  "requirements": {
+    "capabilities": [
+      "WATER_RESCUE",
+      "MEDICAL"
+    ],
+    "minimum_capacity": 4
+  },
+
+  "vulnerability_context": {
+    "age_group": "ELDERLY",
+    "can_swim": false,
+    "mobility_level": "LIMITED",
+    "medical_conditions": [
+      "HYPERTENSION"
+    ]
+  },
+
+  "location": {
+    "latitude": 16.5062,
+    "longitude": 80.6480
+  },
+
+  "disaster_type": "FLOOD"
+}
+```
+
+### Response
+
+```json
+{
+  "emergency_id": "E101",
+
+  "candidates": [
+    {
+      "resource_id": "R03",
+      "name": "Medical Boat Team 03",
+
+      "capabilities": [
+        "WATER_RESCUE",
+        "MEDICAL"
+      ],
+
+      "capacity": 6,
+
+      "availability_status": "AVAILABLE",
+
+      "eta_minutes": 11,
+
+      "route_feasible": true,
+
+      "score": 94,
+
+      "score_breakdown": {
+        "capability_match": 30,
+        "vulnerability_fit": 20,
+        "availability": 15,
+        "capacity_fit": 10,
+        "route_feasibility": 10,
+        "eta": 9
+      },
+
+      "reasons": [
+        "Matches water rescue requirement",
+        "Medical capability available",
+        "Suitable for elderly non-swimmer",
+        "Boat equipped",
+        "Capacity sufficient",
+        "Route currently feasible"
+      ]
+    },
+
+    {
+      "resource_id": "R02",
+      "name": "Boat Rescue Team 02",
+
+      "capabilities": [
+        "WATER_RESCUE"
+      ],
+
+      "capacity": 10,
+
+      "availability_status": "AVAILABLE",
+
+      "eta_minutes": 8,
+
+      "route_feasible": true,
+
+      "score": 78,
+
+      "reasons": [
+        "Fast ETA",
+        "Water rescue capability",
+        "No medical capability"
+      ]
+    }
+  ]
+}
+```
+
+---
+
+# 10. Resource CRUD
+
+## Create Resource
+
+```http
+POST /api/v1/resources
+```
+
+```json
+{
+  "name": "Medical Boat Team 03",
+  "type": "BOAT_TEAM",
+
+  "capabilities": [
+    "WATER_RESCUE",
+    "MEDICAL"
+  ],
+
+  "capacity": 6,
+
+  "current_location": {
+    "latitude": 16.5020,
+    "longitude": 80.6450
+  },
+
+  "availability_status": "AVAILABLE",
+
+  "organization": "District Emergency Response Unit"
+}
+```
+
+## Update Resource
+
+```http
+PATCH /api/v1/resources/R03
+```
+
+```json
+{
+  "availability_status": "UNAVAILABLE",
+  "current_location": {
+    "latitude": 16.5050,
+    "longitude": 80.6470
+  },
+  "reason": "Mechanical failure"
+}
+```
+
+---
+
+# 11. Assignment Creation
+
+Assignment happens after recommendation and human approval. The architecture explicitly places human approval before consequential operational changes. 
+
+```http
+POST /api/v1/assignments
+```
+
+### Request
+
+```json
+{
+  "emergency_id": "E101",
+
+  "resource_id": "R03",
+
+  "assigned_by": "USR-COORD-01",
+
+  "approval": {
+    "approved": true,
+    "approved_by": "USR-COORD-01",
+    "approval_timestamp": "2026-09-18T10:48:00Z"
+  },
+
+  "route": {
+    "origin": {
+      "latitude": 16.5020,
+      "longitude": 80.6450
+    },
+    "destination": {
+      "latitude": 16.5062,
+      "longitude": 80.6480
+    },
+    "distance_km": 3.2
+  },
+
+  "eta_minutes": 11,
+
+  "priority_snapshot": {
+    "score": 96,
+    "level": "CRITICAL"
+  }
+}
+```
+
+### Response
+
+```json
+{
+  "assignment_id": "A-1001",
+  "emergency_id": "E101",
+  "resource_id": "R03",
+
+  "status": "ASSIGNED",
+
+  "eta_minutes": 11,
+
+  "assigned_by": "USR-COORD-01",
+
+  "created_at": "2026-09-18T10:48:03Z"
+}
+```
+
+---
+
+# 12. Responder Assignment Notification
+
+```http
+POST /api/v1/notifications/assignment
+```
+
+```json
+{
+  "recipient_id": "RESP-003",
+
+  "assignment_id": "A-1001",
+
+  "emergency_id": "E101",
+
+  "priority": {
+    "score": 96,
+    "level": "CRITICAL"
+  },
+
+  "vulnerability_summary": [
+    "Elderly",
+    "Cannot swim",
+    "Limited mobility",
+    "Medical assistance required"
+  ],
+
+  "location": {
+    "latitude": 16.5062,
+    "longitude": 80.6480
+  },
+
+  "eta_minutes": 11,
+
+  "route": {
+    "route_id": "ROUTE-101",
+    "status": "FEASIBLE"
+  },
+
+  "message": "Emergency E101 assigned to you. Priority CRITICAL. Medical boat response required."
+}
+```
+
+---
+
+# 13. Road Status Update
+
+A road change generates a domain event that feeds dynamic replanning. 
+
+```http
+PATCH /api/v1/roads/R12/status
+```
+
+### Request
+
+```json
+{
+  "status": "BLOCKED",
+
+  "reason": "Flood water overflow",
+
+  "source_type": "RESPONDER",
+
+  "reported_by": "RESP-007",
+
+  "location": {
+    "latitude": 16.5080,
+    "longitude": 80.6490
+  },
+
+  "evidence": [
+    {
+      "type": "IMAGE",
+      "url": "https://example.com/road-r12.jpg"
+    }
+  ],
+
+  "timestamp": "2026-09-18T10:55:00Z"
+}
+```
+
+### Response
+
+```json
+{
+  "road_id": "R12",
+  "status": "BLOCKED",
+
+  "confidence": {
+    "score": 0.91,
+    "evidence_count": 3,
+    "verified_count": 1
+  },
+
+  "event": {
+    "type": "ROAD_STATUS_CHANGED",
+    "event_id": "EVT-ROAD-001"
+  }
+}
+```
+
+---
+
+# 14. Dynamic Replanning Request
+
+The replanning workflow is:
+
+```text
+OBSERVE
+→ UNDERSTAND
+→ PLAN
+→ VALIDATE
+→ APPROVE
+→ EXECUTE
+→ MONITOR
+```
+
+as specified in the execution workflow. 
+
+```http
+POST /api/v1/decision/replan
+```
+
+### Request
+
+```json
+{
+  "trigger": {
+    "type": "ROAD_BLOCKED",
+    "entity_id": "R12",
+    "event_id": "EVT-ROAD-001"
+  },
+
+  "current_state": {
+    "assignments": [
+      {
+        "assignment_id": "A-1001",
+        "emergency_id": "E101",
+        "resource_id": "R03",
+        "route_id": "ROUTE-101"
+      }
+    ],
+
+    "resources": [
+      {
+        "id": "R03",
+        "availability_status": "AVAILABLE"
+      },
+      {
+        "id": "R05",
+        "availability_status": "AVAILABLE"
+      }
+    ]
+  },
+
+  "constraints": {
+    "preserve_priority_order": true,
+    "preserve_vulnerability_priority": true,
+    "avoid_blocked_roads": true,
+    "human_approval_required": true
+  }
+}
+```
+
+### Response
+
+```json
+{
+  "replan_id": "REPLAN-001",
+
+  "status": "PENDING_APPROVAL",
+
+  "affected_assignments": [
+    "A-1001"
+  ],
+
+  "original_plan": {
+    "resource_id": "R03",
+    "route_id": "ROUTE-101",
+    "eta_minutes": 11
+  },
+
+  "alternative_plan": {
+    "resource_id": "R03",
+    "route_id": "ROUTE-105",
+    "eta_minutes": 14
+  },
+
+  "changes": [
+    {
+      "type": "ROUTE_CHANGED",
+      "from": "ROUTE-101",
+      "to": "ROUTE-105"
+    }
+  ],
+
+  "validation": {
+    "blocked_roads_used": false,
+    "capacity_valid": true,
+    "capability_valid": true,
+    "priority_order_preserved": true
+  },
+
+  "reason": "Original route R12 became blocked. Alternative route selected while preserving the critical emergency assignment."
+}
+```
+
+---
+
+# 15. Approve Replan
+
+```http
+POST /api/v1/decision/replan/{replan_id}/approve
+```
+
+```json
+{
+  "approved": true,
+
+  "approved_by": "USR-COORD-01",
+
+  "approval_reason": "Alternative route validated and ETA acceptable.",
+
+  "timestamp": "2026-09-18T11:00:00Z"
+}
+```
+
+Response:
+
+```json
+{
+  "replan_id": "REPLAN-001",
+  "status": "APPLIED",
+
+  "updated_assignments": [
+    {
+      "assignment_id": "A-1001",
+      "route_id": "ROUTE-105",
+      "eta_minutes": 14
+    }
+  ],
+
+  "notifications_triggered": true
+}
+```
+
+---
+
+# 16. Resource Failure
+
+```http
+POST /api/v1/resources/R03/events
+```
+
+```json
+{
+  "event_type": "RESOURCE_FAILURE",
+
+  "resource_id": "R03",
+
+  "status": "UNAVAILABLE",
+
+  "reason": "Boat engine failure",
+
+  "reported_by": "RESP-003",
+
+  "timestamp": "2026-09-18T11:05:00Z"
+}
+```
+
+This triggers:
+
+```text
+Resource failure
+      ↓
+Find affected assignments
+      ↓
+Resource matching
+      ↓
+Routing
+      ↓
+Dynamic replanning
+      ↓
+Human approval
+```
+
+---
+
+# 17. Confidence Layer
+
+The architecture aggregates citizen, responder and authority observations, considering source quality, corroboration, recency, geographic consistency and verification. 
+
+## Submit Observation
+
+```http
+POST /api/v1/observations
+```
+
+### Request
+
+```json
+{
+  "entity_type": "ROAD",
+
+  "entity_id": "R12",
+
+  "source_type": "CITIZEN",
+
+  "status": "BLOCKED",
+
+  "details": {
+    "description": "Road completely flooded.",
+    "water_depth_estimate": "HIGH"
+  },
+
+  "location": {
+    "latitude": 16.5080,
+    "longitude": 80.6490
+  },
+
+  "evidence": [
+    {
+      "type": "IMAGE",
+      "url": "https://example.com/evidence.jpg"
+    }
+  ],
+
+  "timestamp": "2026-09-18T11:06:00Z"
+}
+```
+
+### Response
+
+```json
+{
+  "observation_id": "OBS-1001",
+
+  "entity_id": "R12",
+
+  "verification_status": "UNVERIFIED",
+
+  "confidence": {
+    "score": 0.67,
+    "level": "MEDIUM"
+  }
+}
+```
+
+---
+
+# 18. Situation/Confidence Query
+
+```http
+GET /api/v1/situations/ROAD/R12
+```
+
+Response:
+
+```json
+{
+  "entity_type": "ROAD",
+  "entity_id": "R12",
+
+  "status": "BLOCKED",
+
+  "confidence": {
+    "score": 0.82,
+    "level": "HIGH"
+  },
+
+  "evidence_count": 5,
+  "verified_count": 1,
+
+  "sources": {
+    "citizen": 4,
+    "responder": 1,
+    "authority": 0
+  },
+
+  "conflicting_reports": 1,
+
+  "last_updated": "2026-09-18T11:07:00Z"
+}
+```
+
+---
+
+# 19. Population Accounting
+
+The updated architecture continuously compares expected population with accounted population and surfaces zone-level discrepancies. 
+
+## Calculate Population Accounting
+
+```http
+POST /api/v1/population/accounting/calculate
+```
+
+### Request
+
+```json
+{
+  "zone_id": "Z04",
+
+  "reference_date": "2026-09-18",
+
+  "expected_population": 1200,
+
+  "sources": {
+    "shelter_registrations": 700,
+    "confirmed_safe": 147,
+    "hospital_admissions": 0,
+    "evacuation_records": 0
+  },
+
+  "gap_threshold": 0.20
+}
+```
+
+### Response
+
+```json
+{
+  "zone_id": "Z04",
+
+  "zone_name": "Ward 7 - Flood Zone Alpha",
+
+  "expected_population": 1200,
+
+  "accounted_population": 847,
+
+  "gap": 353,
+
+  "gap_percentage": 29.42,
+
+  "threshold": 20,
+
+  "status": "CRITICAL",
+
+  "confidence": {
+    "level": "MEDIUM",
+    "score": 0.71
+  },
+
+  "note": "Population gap is a reconciliation signal and is not proof that specific individuals are missing.",
+
+  "human_review_required": true,
+
+  "computed_at": "2026-09-18T11:10:00Z"
+}
+```
+
+---
+
+# 20. Shelter Registration
+
+```http
+POST /api/v1/shelters/{shelter_id}/registrations
+```
+
+### Request
+
+```json
+{
+  "individual": {
+    "name": "Ravi Kumar",
+    "age": 68,
+    "gender": "MALE"
+  },
+
+  "zone_of_origin_id": "Z04",
+
+  "status": "REGISTERED",
+
+  "registered_at": "2026-09-18T11:12:00Z"
+}
+```
+
+### Response
+
+```json
+{
+  "registration_id": "REG-1001",
+
+  "shelter_id": "S01",
+
+  "status": "REGISTERED",
+
+  "registered_at": "2026-09-18T11:12:03Z"
+}
+```
+
+This event should automatically trigger recalculation of the population gap.
+
+---
+
+# 21. Confirm Person Safe
+
+```http
+POST /api/v1/population/confirmed-safe
+```
+
+```json
+{
+  "person_reference": "USR-1001",
+
+  "zone_id": "Z04",
+
+  "location_type": "SHELTER",
+
+  "location_id": "S01",
+
+  "confirmed_by": "USR-COORD-01",
+
+  "evidence": {
+    "type": "IDENTITY_VERIFIED"
+  },
+
+  "timestamp": "2026-09-18T11:13:00Z"
+}
+```
+
+Response:
+
+```json
+{
+  "record_id": "SAFE-1001",
+  "status": "CONFIRMED_SAFE",
+  "population_accounting_updated": true
+}
+```
+
+---
+
+# 22. Missing-Person Candidate / Investigation
+
+Important: the architecture does **not** automatically declare an individual missing from a population gap. Human review is required. 
+
+## Create Investigation
+
+```http
+POST /api/v1/missing-person/investigations
+```
+
+### Request
+
+```json
+{
+  "zone_id": "Z04",
+
+  "trigger": {
+    "type": "POPULATION_GAP",
+    "population_gap_record_id": "POP-1001"
+  },
+
+  "reported_by": "USR-COORD-01",
+
+  "search_scope": {
+    "include_shelters": true,
+    "include_hospitals": true,
+    "include_evacuation_records": true,
+    "include_responder_sightings": true
+  },
+
+  "priority": "HIGH",
+
+  "human_reviewed": true
+}
+```
+
+Response:
+
+```json
+{
+  "investigation_id": "MPI-1001",
+
+  "zone_id": "Z04",
+
+  "status": "UNDER_VERIFICATION",
+
+  "population_gap": 353,
+
+  "human_confirmed": true,
+
+  "created_at": "2026-09-18T11:15:00Z"
+}
+```
+
+---
+
+# 23. Individual Missing Person Report
+
+Only after appropriate human action:
+
+```http
+POST /api/v1/missing-person
+```
+
+```json
+{
+  "reported_by": "USR-COORD-01",
+
+  "name": "Ravi Kumar",
+
+  "age": 68,
+
+  "gender": "MALE",
+
+  "last_known_location": {
+    "latitude": 16.5062,
+    "longitude": 80.6480
+  },
+
+  "last_seen_at": "2026-09-18T08:30:00Z",
+
+  "zone_id": "Z04",
+
+  "source": "MANUAL",
+
+  "status": "REPORTED",
+
+  "human_confirmed": true
+}
+```
+
+Response:
+
+```json
+{
+  "id": "MP-1001",
+
+  "status": "REPORTED",
+
+  "source": "MANUAL",
+
+  "human_confirmed": true
+}
+```
+
+---
+
+# 24. Missing Person Status Update
+
+```http
+PATCH /api/v1/missing-person/MP-1001
+```
+
+```json
+{
+  "status": "FOUND",
+
+  "resolution": "FOUND_AT_SHELTER",
+
+  "location": {
+    "shelter_id": "S01"
+  },
+
+  "verified_by": "USR-COORD-01",
+
+  "verification_evidence": {
+    "identity_verified": true
+  },
+
+  "timestamp": "2026-09-18T12:00:00Z"
+}
+```
+
+---
+
+# 25. What-If Simulation
+
+The simulator creates an immutable snapshot and must never directly mutate live state. 
+
+## Create Simulation
+
+```http
+POST /api/v1/simulations
+```
+
+### Complete request
+
+```json
+{
+  "name": "Flood Surge Scenario 01",
+
+  "created_by": "USR-COORD-01",
+
+  "base_state_version": "LIVE-VERSION-184",
+
+  "scenario_changes": [
+    {
+      "type": "BLOCK_ROAD",
+      "road_id": "R15",
+      "new_status": "BLOCKED"
+    },
+
+    {
+      "type": "DISABLE_RESOURCE",
+      "resource_id": "R03"
+    },
+
+    {
+      "type": "INCREASE_EMERGENCIES",
+      "additional_count": 20
+    },
+
+    {
+      "type": "REDUCE_SHELTER_CAPACITY",
+      "shelter_id": "S01",
+      "reduction": 100
+    },
+
+    {
+      "type": "INCREASE_FLOOD_SEVERITY",
+      "zone_id": "Z04",
+      "new_severity": 5
+    },
+
+    {
+      "type": "ADD_VULNERABLE_CLUSTER",
+      "zone_id": "Z04",
+      "population": 50,
+      "profile": {
+        "age_group": "ELDERLY",
+        "mobility_level": "LIMITED",
+        "can_swim": false
+      }
+    }
+  ]
+}
+```
+
+### Response
+
+```json
+{
+  "simulation_id": "SIM-1001",
+
+  "status": "CREATED",
+
+  "base_state_version": "LIVE-VERSION-184",
+
+  "simulation_state_version": "SIM-VERSION-001",
+
+  "scenario_changes": 6
+}
+```
+
+---
+
+# 26. Run Simulation
+
+```http
+POST /api/v1/simulations/SIM-1001/run
+```
+
+### Request
+
+```json
+{
+  "run_decision_engine": true,
+
+  "run_priority_engine": true,
+
+  "run_resource_matching": true,
+
+  "run_routing": true,
+
+  "run_dynamic_replanning": true,
+
+  "calculate_population_impact": true,
+
+  "calculate_vulnerability_priority_shifts": true
+}
+```
+
+### Response
+
+```json
+{
+  "simulation_id": "SIM-1001",
+
+  "status": "COMPLETED",
+
+  "impact": {
+    "affected_emergencies": 12,
+
+    "new_unserved_emergencies": 3,
+
+    "assignments_changed": 5,
+
+    "average_eta_change_minutes": 4.8,
+
+    "critical_emergencies": {
+      "before": 4,
+      "after": 8
+    },
+
+    "population_gap": {
+      "before": 353,
+      "after": 421
+    }
+  },
+
+  "alternative_plan": {
+    "resource_reassignments": [
+      {
+        "emergency_id": "E101",
+        "from_resource": "R03",
+        "to_resource": "R05"
+      }
+    ],
+
+    "route_changes": [
+      {
+        "emergency_id": "E102",
+        "old_route": "R12-R15",
+        "new_route": "R08-R19"
+      }
+    ]
+  },
+
+  "vulnerability_priority_shifts": [
+    {
+      "emergency_id": "E101",
+      "old_score": 96,
+      "new_score": 99,
+      "reason": "Flood severity increased"
+    }
+  ]
+}
+```
+
+---
+
+# 27. Apply Simulation
+
+Never automatically apply.
+
+```http
+POST /api/v1/simulations/SIM-1001/apply
+```
+
+```json
+{
+  "approved": true,
+
+  "approved_by": "USR-COORD-01",
+
+  "reason": "Simulated plan provides feasible alternatives for critical emergencies.",
+
+  "approval_timestamp": "2026-09-18T12:10:00Z"
+}
+```
+
+Response:
+
+```json
+{
+  "simulation_id": "SIM-1001",
+
+  "status": "APPLIED",
+
+  "live_state_version": "LIVE-VERSION-185",
+
+  "assignments_updated": 5,
+
+  "routes_updated": 2,
+
+  "notifications_triggered": true
+}
+```
+
+---
+
+# 28. LangGraph Agent Request
+
+The updated architecture has:
+
+```text
+Supervisor
+ ├── Situation Understanding
+ ├── Resource Management
+ ├── Routing & Planning
+ ├── What-If Simulation
+ ├── Policy & Compliance
+ └── Explanation
+```
+
+
+
+## Start Agent Workflow
+
+```http
+POST /api/v1/agents/workflow
+```
+
+### Request
+
+```json
+{
+  "event": {
+    "type": "EMERGENCY_CREATED",
+    "emergency_id": "E101"
+  },
+
+  "context": {
+    "disaster_type": "FLOOD",
+
+    "zone_id": "Z04",
+
+    "user_role": "COORDINATOR"
+  },
+
+  "requested_operations": [
+    "UNDERSTAND_SITUATION",
+    "FETCH_POLICIES",
+    "MATCH_RESOURCES",
+    "PLAN_ROUTE",
+    "GENERATE_EXPLANATION"
+  ],
+
+  "constraints": {
+    "allow_resource_assignment": false,
+    "allow_live_state_mutation": false,
+    "human_approval_required": true
+  }
+}
+```
+
+### Response
+
+```json
+{
+  "workflow_id": "WF-1001",
+
+  "status": "COMPLETED",
+
+  "agents_executed": [
+    "SUPERVISOR",
+    "SITUATION_UNDERSTANDING",
+    "POLICY_COMPLIANCE",
+    "RESOURCE_MANAGEMENT",
+    "ROUTING_PLANNING",
+    "EXPLANATION"
+  ],
+
+  "result": {
+    "situation": {
+      "emergency_id": "E101",
+      "zone": "Z04",
+      "severity": 5
+    },
+
+    "policies": [
+      "POL-001"
+    ],
+
+    "resource_recommendation": "R03",
+
+    "route": {
+      "route_id": "ROUTE-101",
+      "eta_minutes": 11
+    },
+
+    "explanation": "E101 is a critical medical rescue in a flood zone involving an elderly person with limited mobility who cannot swim. R03 is recommended because it provides both medical and water-rescue capabilities."
+  },
+
+  "human_approval_required": true
+}
+```
+
+---
+
+# 29. Agent Tool Invocation Payload
+
+The agents should not directly manipulate the database.
+
+For example:
+
+```json
+{
+  "tool": "calculate_priority",
+
+  "arguments": {
+    "emergency_id": "E101",
+
+    "severity": 5,
+
+    "people_affected": 4,
+
+    "medical_need": "HIGH",
+
+    "waiting_time_minutes": 6,
+
+    "vulnerability_profile": {
+      "age_group": "ELDERLY",
+      "can_swim": false,
+      "mobility_level": "LIMITED",
+      "medical_conditions": [
+        "HYPERTENSION"
+      ]
+    },
+
+    "disaster_type": "FLOOD"
+  }
+}
+```
+
+The tool returns structured data:
+
+```json
+{
+  "priority_score": 96,
+  "priority_level": "CRITICAL",
+  "reasons": [
+    "Critical severity",
+    "Medical assistance required",
+    "Elderly",
+    "Cannot swim in flood conditions",
+    "Limited mobility"
+  ]
+}
+```
+
+The LLM then explains it.
+
+**LLM does not invent the score.**
+
+---
+
+# 30. Policy Agent Payload
+
+```json
+{
+  "tool": "get_zone_policies",
+
+  "arguments": {
+    "zone_id": "Z04",
+
+    "role": "COORDINATOR",
+
+    "disaster_type": "FLOOD",
+
+    "include_reconstruction_norms": true,
+
+    "include_expired": false
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "zone_id": "Z04",
+
+  "policies": [
+    {
+      "id": "POL-001",
+      "type": "EVACUATION",
+      "title": "Flood Evacuation Guidance",
+      "description": "Follow official evacuation instructions.",
+      "source": "District Disaster Management Authority",
+      "status": "ACTIVE"
+    }
+  ],
+
+  "reconstruction_norms": [
+    {
+      "id": "POL-009",
+      "type": "RECONSTRUCTION",
+      "title": "Rainwater Management",
+      "description": "Follow the applicable official construction and stormwater-management requirements.",
+      "source": "Verified Authority Source"
+    }
+  ]
+}
+```
+
+**Important:** don't allow the LLM to fabricate legal requirements. The policy database is the source of truth.
+
+---
+
+# 31. Population Agent Payload
+
+```json
+{
+  "tool": "calculate_population_gap",
+
+  "arguments": {
+    "zone_id": "Z04",
+
+    "reference_date": "2026-09-18",
+
+    "sources": {
+      "census": 1200,
+      "shelter_registrations": 700,
+      "confirmed_safe": 147,
+      "hospital_admissions": 0,
+      "evacuations": 0
+    },
+
+    "threshold": 0.20
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "expected_population": 1200,
+  "accounted_population": 847,
+  "gap": 353,
+  "gap_percentage": 29.42,
+  "status": "CRITICAL",
+  "confidence": 0.71,
+  "human_review_required": true
+}
+```
+
+---
+
+# 32. WebSocket Payloads
+
+The architecture uses:
+
+```text
+Database update
+ ↓
+Domain event
+ ↓
+Redis/event mechanism
+ ↓
+WebSocket
+ ↓
+React Command Center
+```
+
+
+
+Connect:
+
+```text
+/ws/command-center
+```
+
+---
+
+## Emergency Created Event
+
+```json
+{
+  "event": "EMERGENCY_CREATED",
+
+  "timestamp": "2026-09-18T12:20:00Z",
+
+  "data": {
+    "emergency_id": "E101",
+    "type": "MEDICAL_RESCUE",
+    "severity": 5,
+    "priority_score": 96,
+    "priority_level": "CRITICAL",
+
+    "location": {
+      "latitude": 16.5062,
+      "longitude": 80.6480
+    },
+
+    "zone_id": "Z04"
+  }
+}
+```
+
+---
+
+# 33. Priority Updated Event
+
+```json
+{
+  "event": "PRIORITY_UPDATED",
+
+  "timestamp": "2026-09-18T12:21:00Z",
+
+  "data": {
+    "emergency_id": "E101",
+
+    "old_score": 91,
+    "new_score": 96,
+
+    "priority_level": "CRITICAL",
+
+    "reasons": [
+      "Waiting time increased",
+      "Flood severity increased"
+    ]
+  }
+}
+```
+
+---
+
+# 34. Resource Assignment Event
+
+```json
+{
+  "event": "RESOURCE_ASSIGNED",
+
+  "timestamp": "2026-09-18T12:22:00Z",
+
+  "data": {
+    "assignment_id": "A-1001",
+    "emergency_id": "E101",
+    "resource_id": "R03",
+
+    "eta_minutes": 11,
+
+    "status": "ASSIGNED"
+  }
+}
+```
+
+---
+
+# 35. Road Block Event
+
+```json
+{
+  "event": "ROAD_STATUS_CHANGED",
+
+  "timestamp": "2026-09-18T12:25:00Z",
+
+  "data": {
+    "road_id": "R12",
+    "status": "BLOCKED",
+
+    "confidence": 0.82,
+
+    "affected_assignments": [
+      "A-1001"
+    ],
+
+    "replanning_required": true
+  }
+}
+```
+
+---
+
+# 36. Replan Event
+
+```json
+{
+  "event": "REPLAN_AVAILABLE",
+
+  "timestamp": "2026-09-18T12:26:00Z",
+
+  "data": {
+    "replan_id": "REPLAN-001",
+
+    "status": "PENDING_APPROVAL",
+
+    "affected_assignments": [
+      "A-1001"
+    ],
+
+    "old_eta": 11,
+    "new_eta": 14,
+
+    "reason": "Original route blocked"
+  }
+}
+```
+
+---
+
+# 37. Population Gap Event
+
+```json
+{
+  "event": "POPULATION_GAP_DETECTED",
+
+  "timestamp": "2026-09-18T12:30:00Z",
+
+  "data": {
+    "zone_id": "Z04",
+
+    "expected_population": 1200,
+
+    "accounted_population": 847,
+
+    "gap": 353,
+
+    "gap_percentage": 29.42,
+
+    "status": "CRITICAL",
+
+    "confidence": "MEDIUM",
+
+    "human_review_required": true
+  }
+}
+```
+
+---
+
+# 38. Missing Person Event
+
+```json
+{
+  "event": "MISSING_PERSON_STATUS_UPDATED",
+
+  "timestamp": "2026-09-18T12:45:00Z",
+
+  "data": {
+    "missing_person_id": "MP-1001",
+
+    "status": "FOUND",
+
+    "resolution": "FOUND_AT_SHELTER",
+
+    "verified_by": "USR-COORD-01"
+  }
+}
+```
+
+---
+
+# 39. Simulation Event
+
+```json
+{
+  "event": "SIMULATION_COMPLETED",
+
+  "timestamp": "2026-09-18T12:50:00Z",
+
+  "data": {
+    "simulation_id": "SIM-1001",
+
+    "affected_emergencies": 12,
+
+    "assignments_changed": 5,
+
+    "new_unserved_emergencies": 3,
+
+    "requires_approval": true
+  }
+}
+```
+
+---
+
+# 40. Offline Sync Payload
+
+This is especially important for Flutter.
+
+The architecture explicitly specifies:
+
+```text
+local UUID
+payload
+operation
+created_at
+retry_count
+sync_status
+```
+
+and server-side idempotency using `operation_id`. 
+
+```http
+POST /api/v1/sync
+```
+
+### Complete payload
+
+```json
+{
+  "client_id": "DEVICE-8A91",
+
+  "device": {
+    "platform": "ANDROID",
+    "app_version": "1.0.0"
+  },
+
+  "sync_timestamp": "2026-09-18T12:55:00Z",
+
+  "operations": [
+    {
+      "operation_id": "OP-001",
+
+      "entity_type": "EMERGENCY",
+
+      "operation": "CREATE",
+
+      "local_entity_id": "LOCAL-E101",
+
+      "created_at": "2026-09-18T12:40:00Z",
+
+      "retry_count": 2,
+
+      "payload": {
+        "reporter_id": "USR-1001",
+
+        "type": "MEDICAL_RESCUE",
+
+        "severity": 5,
+
+        "people_affected": 4,
+
+        "medical_need": "HIGH",
+
+        "description": "Family trapped inside flooded house.",
+
+        "latitude": 16.5062,
+        "longitude": 80.6480,
+
+        "disaster_type": "FLOOD",
+
+        "vulnerability_profile_snapshot": {
+          "age_group": "ELDERLY",
+          "gender": "MALE",
+          "can_swim": false,
+          "has_disability": false,
+          "mobility_level": "LIMITED",
+          "medical_conditions": [
+            "HYPERTENSION"
+          ]
+        }
+      }
+    },
+
+    {
+      "operation_id": "OP-002",
+
+      "entity_type": "SITUATION_OBSERVATION",
+
+      "operation": "CREATE",
+
+      "local_entity_id": "LOCAL-OBS-01",
+
+      "created_at": "2026-09-18T12:42:00Z",
+
+      "retry_count": 1,
+
+      "payload": {
+        "entity_type": "ROAD",
+        "entity_id": "R12",
+        "source_type": "CITIZEN",
+        "status": "BLOCKED",
+        "details": {
+          "description": "Flood water covering road."
+        }
+      }
+    }
+  ]
+}
+```
+
+### Sync response
+
+```json
+{
+  "client_id": "DEVICE-8A91",
+
+  "processed": [
+    {
+      "operation_id": "OP-001",
+      "status": "ACCEPTED",
+      "server_entity_id": "E101",
+      "sync_status": "SYNCED"
+    },
+
+    {
+      "operation_id": "OP-002",
+      "status": "ACCEPTED",
+      "server_entity_id": "OBS-1001",
+      "sync_status": "SYNCED"
+    }
+  ],
+
+  "duplicates": [],
+
+  "failed": [],
+
+  "server_timestamp": "2026-09-18T12:55:05Z"
+}
+```
+
+---
+
+# 41. Simulated Radio Payload
+
+Your architecture specifically treats radio as a **software simulator**, not physical LoRa hardware. The transport abstraction is:
+
+```text
+InternetTransport
+SimulatedRadioTransport
+OfflineQueueTransport
+```
+
+
+
+## Send Radio Packet
+
+```http
+POST /api/v1/radio/simulator/send
+```
+
+```json
+{
+  "packet_id": "RADIO-PKT-001",
+
+  "source_node": "NODE-A",
+
+  "destination_node": "GATEWAY",
+
+  "packet_type": "EMERGENCY_SOS",
+
+  "ttl": 5,
+
+  "payload": {
+    "emergency_id": "LOCAL-E101",
+
+    "type": "MEDICAL_RESCUE",
+
+    "severity": 5,
+
+    "latitude": 16.5062,
+    "longitude": 80.6480,
+
+    "short_message": "Family trapped in flooded house"
+  },
+
+  "simulation": {
+    "latency_ms": 1200,
+    "packet_loss_probability": 0.10,
+    "store_and_forward": true
+  },
+
+  "created_at": "2026-09-18T13:00:00Z"
+}
+```
+
+Response:
+
+```json
+{
+  "packet_id": "RADIO-PKT-001",
+
+  "status": "FORWARDED",
+
+  "path": [
+    "NODE-A",
+    "NODE-B",
+    "GATEWAY"
+  ],
+
+  "delivery_status": "DELIVERED",
+
+  "simulated": true
+}
+```
+
+The UI should explicitly say:
+
+> **Simulated Radio Transport — No Physical Radio Hardware**
+
+---
+
+# 42. Connectivity Status Payload
+
+Flutter should periodically expose its transport state.
+
+```json
+{
+  "device_id": "DEVICE-8A91",
+
+  "connectivity_state": "OFFLINE",
+
+  "available_transports": {
+    "internet": false,
+    "simulated_radio": true,
+    "local_storage": true
+  },
+
+  "pending_operations": 3,
+
+  "last_successful_sync": "2026-09-18T12:20:00Z"
+}
+```
+
+Possible states:
+
+```text
+ONLINE
+INTERMITTENT
+OFFLINE
+RADIO_AVAILABLE
+```
+
+---
+
+# 43. Shelter Availability Update
+
+```http
+PATCH /api/v1/shelters/S01
+```
+
+```json
+{
+  "capacity": 500,
+
+  "occupied": 420,
+
+  "available": 80,
+
+  "status": "OPEN",
+
+  "amenities": [
+    "DRINKING_WATER",
+    "FOOD",
+    "MEDICAL",
+    "RESTROOM",
+    "WOMEN_SAFE_SPACE"
+  ],
+
+  "accessibility": {
+    "wheelchair_accessible": true,
+    "elderly_support": true
+  },
+
+  "updated_by": "USR-SHELTER-01"
+}
+```
+
+---
+
+# 44. Hospital Capacity Update
+
+```http
+PATCH /api/v1/hospitals/H01/capacity
+```
+
+```json
+{
+  "available_beds": 18,
+
+  "emergency_beds": 6,
+
+  "icu_beds": 2,
+
+  "ambulance_slots": 3,
+
+  "medical_team_available": true,
+
+  "updated_by": "USR-MEDICAL-01",
+
+  "timestamp": "2026-09-18T13:05:00Z"
+}
+```
+
+---
+
+# 45. Reconstruction / Resilience Advisory
+
+This corresponds to the new prevention/reconstruction layer in your architecture.
+
+```http
+POST /api/v1/zones/{zone_id}/reconstruction-advisories
+```
+
+### Request
+
+```json
+{
+  "context": "POST_DISASTER_RECONSTRUCTION",
+
+  "construction_type": "RESIDENTIAL",
+
+  "hazard_type": "FLOOD",
+
+  "location": {
+    "latitude": 16.5062,
+    "longitude": 80.6480
+  },
+
+  "requested_topics": [
+    "RAINWATER_HARVESTING",
+    "STORMWATER_MANAGEMENT",
+    "FLOOD_RESILIENT_CONSTRUCTION",
+    "EMERGENCY_ACCESS"
+  ]
+}
+```
+
+### Response
+
+```json
+{
+  "zone_id": "Z04",
+
+  "advisories": [
+    {
+      "topic": "RAINWATER_HARVESTING",
+
+      "title": "Rainwater Management",
+
+      "type": "OFFICIAL_RECOMMENDATION",
+
+      "description": "Follow the applicable authority guidance for rainwater harvesting and site water management.",
+
+      "source": "Verified Authority Source",
+
+      "legal_reference": null,
+
+      "effective": true
+    }
+  ],
+
+  "disclaimer": "Requirements and recommendations are shown only when supported by verified source records."
+}
+```
+
+This is important because your architecture identifies reconstruction norms as a distinct policy category and exposes them in the command center. 

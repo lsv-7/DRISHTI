@@ -1,0 +1,1222 @@
+Yes. Since the payloads I gave introduced several fields that weren't explicitly enumerated in the architecture document, here's a **canonical value dictionary** you can use across FastAPI, React, and Flutter.
+
+I'll distinguish between **values explicitly supported by your architecture** and **recommended API enum values introduced for implementation**.
+
+---
+
+# 1. User / Vulnerability Profile
+
+Your architecture explicitly defines `age_group`, `mobility_level`, and the roles. 
+
+### `age_group`
+
+```text
+CHILD
+ADULT
+ELDERLY
+```
+
+### `gender`
+
+The architecture says gender is context-specific but does **not** define an enum. 
+
+Recommended:
+
+```text
+MALE
+FEMALE
+NON_BINARY
+OTHER
+PREFER_NOT_TO_SAY
+```
+
+If you don't actually need gender for an operational decision, it should not be used by the priority engine.
+
+### `can_swim`
+
+```text
+true
+false
+```
+
+### `has_disability`
+
+```text
+true
+false
+```
+
+### `disability_type`
+
+Recommended:
+
+```text
+NONE
+VISUAL
+HEARING
+MOBILITY
+COGNITIVE
+SPEECH
+MULTIPLE
+OTHER
+```
+
+Can also be `null` when `has_disability = false`.
+
+### `mobility_level`
+
+Explicitly supported:
+
+```text
+FULL
+LIMITED
+IMMOBILE
+```
+
+### `medical_conditions`
+
+This is a list, so each item can use:
+
+```text
+NONE
+HYPERTENSION
+DIABETES
+HEART_CONDITION
+ASTHMA
+EPILEPSY
+KIDNEY_DISEASE
+RESPIRATORY_CONDITION
+PREGNANCY_RELATED
+MEDICATION_DEPENDENCY
+OTHER
+```
+
+**Important:** don't turn this into a medical diagnosis system. These are operational-response indicators supplied by the user.
+
+---
+
+# 2. User Roles
+
+These are explicitly defined in the architecture. 
+
+```text
+CITIZEN
+RESPONDER
+COORDINATOR
+ADMIN
+MEDICAL
+SHELTER_MANAGER
+```
+
+---
+
+# 3. Emergency
+
+## `type`
+
+Recommended canonical values:
+
+```text
+MEDICAL_RESCUE
+RESCUE
+EVACUATION
+FLOOD
+FIRE
+EARTHQUAKE
+CYCLONE
+LANDSLIDE
+BUILDING_COLLAPSE
+MISSING_PERSON
+TRAPPED_PERSON
+WATER_RESCUE
+OTHER
+```
+
+For your MVP, I'd primarily use:
+
+```text
+MEDICAL_RESCUE
+RESCUE
+EVACUATION
+MISSING_PERSON
+WATER_RESCUE
+```
+
+---
+
+## `severity`
+
+Your architecture uses a numeric severity and examples use `5`.
+
+Use:
+
+```text
+1 = LOW
+2 = MODERATE
+3 = HIGH
+4 = VERY_HIGH
+5 = CRITICAL
+```
+
+API:
+
+```json
+{
+  "severity": 5
+}
+```
+
+---
+
+## `medical_need`
+
+Recommended:
+
+```text
+NONE
+LOW
+MEDIUM
+HIGH
+CRITICAL
+```
+
+---
+
+## `status`
+
+Your architecture explicitly defines the emergency lifecycle: 
+
+```text
+CREATED
+SYNCED
+VALIDATED
+PRIORITIZED
+POLICY_SURFACED
+ASSIGNMENT_PENDING
+ASSIGNED
+IN_PROGRESS
+RESOLVED
+```
+
+I'd additionally allow:
+
+```text
+CANCELLED
+DUPLICATE
+```
+
+for real-world operational handling.
+
+---
+
+## `priority_level`
+
+Recommended:
+
+```text
+LOW
+MEDIUM
+HIGH
+CRITICAL
+```
+
+---
+
+## `sync_status`
+
+Recommended:
+
+```text
+PENDING_SYNC
+SYNCING
+SYNCED
+SYNC_FAILED
+CONFLICT
+```
+
+---
+
+## `disaster_type`
+
+Your architecture uses disaster types such as flood, cyclone and earthquake. 
+
+Use:
+
+```text
+FLOOD
+CYCLONE
+EARTHQUAKE
+LANDSLIDE
+FIRE
+TSUNAMI
+DROUGHT
+HEATWAVE
+URBAN_DISASTER
+MULTI_HAZARD
+OTHER
+```
+
+For the current MVP:
+
+```text
+FLOOD
+```
+
+---
+
+# 4. Connectivity
+
+The architecture explicitly distinguishes online, intermittent and offline operation. 
+
+### `connectivity_state`
+
+```text
+ONLINE
+INTERMITTENT
+OFFLINE
+```
+
+### `available_transports`
+
+```text
+internet
+simulated_radio
+local_storage
+```
+
+Each is:
+
+```text
+true
+false
+```
+
+Example:
+
+```json
+{
+  "available_transports": {
+    "internet": false,
+    "simulated_radio": true,
+    "local_storage": true
+  }
+}
+```
+
+---
+
+# 5. Media
+
+### `media.type`
+
+```text
+IMAGE
+VIDEO
+AUDIO
+DOCUMENT
+```
+
+For MVP:
+
+```text
+IMAGE
+AUDIO
+```
+
+---
+
+# 6. Resource
+
+## `type`
+
+Recommended:
+
+```text
+RESCUE_TEAM
+BOAT_TEAM
+AMBULANCE
+MEDICAL_TEAM
+FIRE_TEAM
+POLICE_TEAM
+VOLUNTEER_TEAM
+EVACUATION_VEHICLE
+TRUCK
+HELICOPTER
+DRONE
+MEDICAL_UNIT
+RELIEF_TEAM
+EQUIPMENT
+OTHER
+```
+
+---
+
+## `capabilities`
+
+Use standardized capability codes:
+
+```text
+RESCUE
+WATER_RESCUE
+MEDICAL
+FIRST_AID
+ALS
+BLS
+FIRE_RESPONSE
+EVACUATION
+SEARCH
+SEARCH_AND_RESCUE
+DEBRIS_CLEARANCE
+TRANSPORT
+AERIAL_RECONNAISSANCE
+DRONE_SURVEILLANCE
+FOOD_DISTRIBUTION
+WATER_DISTRIBUTION
+SHELTER_SUPPORT
+COMMUNICATION
+ANIMAL_RESCUE
+```
+
+Example:
+
+```json
+{
+  "capabilities": [
+    "WATER_RESCUE",
+    "MEDICAL",
+    "FIRST_AID"
+  ]
+}
+```
+
+---
+
+## `availability_status`
+
+Recommended:
+
+```text
+AVAILABLE
+BUSY
+UNAVAILABLE
+OFFLINE
+MAINTENANCE
+RESERVED
+```
+
+The resource should not be considered assignable unless:
+
+```text
+availability_status = AVAILABLE
+```
+
+---
+
+# 7. Assignment
+
+## `status`
+
+Recommended:
+
+```text
+PENDING_APPROVAL
+ASSIGNED
+ACKNOWLEDGED
+EN_ROUTE
+ARRIVED
+IN_PROGRESS
+COMPLETED
+CANCELLED
+REASSIGNED
+```
+
+---
+
+## `approval.approved`
+
+```text
+true
+false
+```
+
+---
+
+## `route.status`
+
+```text
+FEASIBLE
+PARTIALLY_FEASIBLE
+BLOCKED
+UNKNOWN
+```
+
+---
+
+# 8. Road
+
+Your architecture defines road `status` but doesn't enumerate its values. 
+
+Recommended:
+
+```text
+OPEN
+PARTIALLY_BLOCKED
+BLOCKED
+RESTRICTED
+UNKNOWN
+```
+
+### `source_type`
+
+```text
+CITIZEN
+RESPONDER
+AUTHORITY
+SENSOR
+SYSTEM
+```
+
+---
+
+# 9. Situation Observation
+
+The architecture defines:
+
+```text
+source_type
+status
+verification_status
+```
+
+but doesn't fully enumerate them. 
+
+### `entity_type`
+
+```text
+ROAD
+RESOURCE
+SHELTER
+HOSPITAL
+EMERGENCY
+ZONE
+```
+
+### `source_type`
+
+```text
+CITIZEN
+RESPONDER
+AUTHORITY
+SENSOR
+EXTERNAL_FEED
+SYSTEM
+```
+
+### `verification_status`
+
+```text
+UNVERIFIED
+PARTIALLY_VERIFIED
+VERIFIED
+REJECTED
+CONFLICTING
+```
+
+---
+
+# 10. Confidence
+
+### `confidence.level`
+
+```text
+VERY_LOW
+LOW
+MEDIUM
+HIGH
+VERY_HIGH
+```
+
+### `confidence.score`
+
+Use:
+
+```text
+0.0 – 1.0
+```
+
+Example:
+
+```json
+{
+  "score": 0.82,
+  "level": "HIGH"
+}
+```
+
+The architecture's confidence layer explicitly uses evidence count, verified count, recency, source quality, corroboration and geographic consistency. 
+
+---
+
+# 11. Disaster Zone
+
+## `zone_type`
+
+Explicitly defined:
+
+```text
+FLOOD
+CYCLONE
+EARTHQUAKE
+COASTAL
+URBAN
+```
+
+
+
+For future extension:
+
+```text
+LANDSLIDE
+FIRE
+TSUNAMI
+DROUGHT
+MULTI_HAZARD
+```
+
+---
+
+# 12. Disaster Zone Policy
+
+Your architecture defines policy categories. 
+
+## `policy_type`
+
+```text
+EVACUATION
+SHELTER
+RECONSTRUCTION
+PREVENTION
+OPERATIONAL
+```
+
+### `applicable_roles`
+
+```text
+CITIZEN
+RESPONDER
+COORDINATOR
+ALL
+```
+
+### `status`
+
+```text
+DRAFT
+ACTIVE
+SUSPENDED
+EXPIRED
+ARCHIVED
+```
+
+### `reconstruction_norm`
+
+```text
+true
+false
+```
+
+### Policy source classification
+
+For the newer policy model I recommend adding:
+
+```text
+LEGAL_REQUIREMENT
+OFFICIAL_POLICY
+OFFICIAL_RECOMMENDATION
+EDUCATIONAL_GUIDANCE
+```
+
+This is particularly important for your resilience/prevention feature.
+
+---
+
+# 13. Population Accounting
+
+Your architecture explicitly defines: 
+
+### `status`
+
+```text
+NORMAL
+ATTENTION
+CRITICAL
+```
+
+### `gap_threshold`
+
+Recommended:
+
+```text
+0.0 – 1.0
+```
+
+Example:
+
+```json
+{
+  "gap_threshold": 0.20
+}
+```
+
+Meaning:
+
+```text
+20%
+```
+
+### `confidence`
+
+Same confidence model:
+
+```text
+VERY_LOW
+LOW
+MEDIUM
+HIGH
+VERY_HIGH
+```
+
+---
+
+# 14. Shelter Registration
+
+Your architecture explicitly defines registration status. 
+
+### `status`
+
+```text
+REGISTERED
+TRANSFERRED
+DISCHARGED
+```
+
+I'd additionally support:
+
+```text
+CHECKED_IN
+CANCELLED
+```
+
+if useful operationally.
+
+---
+
+# 15. Missing Person
+
+Your architecture explicitly defines the main status and source. 
+
+### `status`
+
+```text
+REPORTED
+SEARCHING
+FOUND
+CLOSED
+```
+
+### `source`
+
+```text
+MANUAL
+INFERRED_ZONE_GAP
+```
+
+However, because the architecture says population gaps **must not automatically create individual missing-person records**, I'd use:
+
+```text
+MANUAL
+ZONE_GAP_INVESTIGATION
+```
+
+internally rather than automatically creating:
+
+```text
+INFERRED_ZONE_GAP
+```
+
+as a confirmed missing-person record.
+
+### `resolution`
+
+Recommended:
+
+```text
+ACCOUNTED
+EVACUATED
+FOUND_AT_SHELTER
+FOUND_AT_HOSPITAL
+FOUND_BY_RESPONDER
+FOUND_SAFE
+FALSE_ALERT
+OTHER
+```
+
+### `human_confirmed`
+
+```text
+true
+false
+```
+
+---
+
+# 16. Missing Person Investigation
+
+### `investigation.status`
+
+```text
+OPEN
+UNDER_VERIFICATION
+SEARCHING
+RESOLVED
+CLOSED
+```
+
+### `trigger.type`
+
+```text
+POPULATION_GAP
+FAMILY_REPORT
+RESPONDER_REPORT
+CITIZEN_REPORT
+SHELTER_MISMATCH
+HOSPITAL_MISMATCH
+```
+
+---
+
+# 17. Simulation
+
+Your architecture explicitly supports these scenario changes: 
+
+### `scenario_changes[].type`
+
+```text
+BLOCK_ROAD
+DISABLE_RESOURCE
+INCREASE_EMERGENCIES
+REDUCE_SHELTER_CAPACITY
+INCREASE_FLOOD_SEVERITY
+ADD_VULNERABLE_CLUSTER
+```
+
+Future:
+
+```text
+ADD_RESOURCE
+REMOVE_RESOURCE
+OPEN_ROAD
+CLOSE_SHELTER
+INCREASE_MEDICAL_DEMAND
+CHANGE_WEATHER_CONDITION
+```
+
+### `simulation.status`
+
+Recommended:
+
+```text
+CREATED
+RUNNING
+COMPLETED
+FAILED
+CANCELLED
+APPLIED
+```
+
+---
+
+# 18. Simulation Approval
+
+```text
+approved = true
+```
+
+or
+
+```text
+approved = false
+```
+
+### `approval_reason`
+
+Free-form string.
+
+Example:
+
+```json
+{
+  "approved": true,
+  "approved_by": "USR-COORD-01",
+  "approval_reason": "Alternative plan provides feasible routes for all critical emergencies."
+}
+```
+
+---
+
+# 19. Radio Simulator
+
+The architecture explicitly states this is a **software simulation only**. 
+
+### `packet_type`
+
+```text
+EMERGENCY_SOS
+LOCATION_UPDATE
+ROAD_UPDATE
+RESOURCE_UPDATE
+SHELTER_UPDATE
+MEDICAL_ALERT
+SYNC_REQUEST
+ACK
+```
+
+### `delivery_status`
+
+```text
+QUEUED
+FORWARDED
+DELIVERED
+DROPPED
+EXPIRED
+```
+
+### `simulation.packet_loss_probability`
+
+```text
+0.0 – 1.0
+```
+
+### `store_and_forward`
+
+```text
+true
+false
+```
+
+---
+
+# 20. Notification
+
+### `notification_type`
+
+Recommended:
+
+```text
+EMERGENCY_ALERT
+ASSIGNMENT
+REPLAN
+ZONE_POLICY_ALERT
+EVACUATION_ALERT
+POPULATION_GAP_ALERT
+MISSING_PERSON_ALERT
+SHELTER_UPDATE
+HOSPITAL_UPDATE
+ROAD_BLOCKED
+RESOURCE_UNAVAILABLE
+SYSTEM
+```
+
+### `severity`
+
+```text
+LOW
+MEDIUM
+HIGH
+CRITICAL
+```
+
+---
+
+# 21. Agent Workflow
+
+### `event.type`
+
+Recommended:
+
+```text
+EMERGENCY_CREATED
+EMERGENCY_UPDATED
+ROAD_STATUS_CHANGED
+RESOURCE_STATUS_CHANGED
+POPULATION_GAP_DETECTED
+POLICY_TRIGGERED
+SIMULATION_REQUESTED
+SIMULATION_COMPLETED
+MISSING_PERSON_REPORTED
+SHELTER_UPDATED
+HOSPITAL_UPDATED
+```
+
+### `requested_operations`
+
+```text
+UNDERSTAND_SITUATION
+FETCH_POLICIES
+CALCULATE_PRIORITY
+MATCH_RESOURCES
+PLAN_ROUTE
+REPLAN
+RUN_SIMULATION
+CALCULATE_POPULATION
+ANALYZE_MISSING_PERSON
+GENERATE_EXPLANATION
+GENERATE_REPORT
+```
+
+### `workflow.status`
+
+```text
+PENDING
+RUNNING
+WAITING_FOR_APPROVAL
+COMPLETED
+FAILED
+CANCELLED
+```
+
+---
+
+# 22. Human Approval
+
+### `approval_type`
+
+Recommended:
+
+```text
+RESOURCE_ASSIGNMENT
+REPLAN
+SIMULATION_APPLY
+MISSING_PERSON_CONFIRMATION
+POLICY_PUBLISH
+EMERGENCY_RESOLUTION
+```
+
+### `decision`
+
+```text
+APPROVED
+REJECTED
+```
+
+---
+
+# 23. Location
+
+For all geographic payloads:
+
+```json
+{
+  "latitude": 16.5062,
+  "longitude": 80.6480
+}
+```
+
+### `location_accuracy_meters`
+
+```text
+positive number
+```
+
+### `location.source`
+
+Recommended:
+
+```text
+GPS
+NETWORK
+USER_SELECTED
+RESPONDER_DEVICE
+SYSTEM
+```
+
+---
+
+# 24. Audit/Event Source
+
+For operations that change important state:
+
+```text
+CITIZEN
+RESPONDER
+COORDINATOR
+ADMIN
+MEDICAL
+SHELTER_MANAGER
+SYSTEM
+AGENT
+```
+
+But distinguish **who initiated it** from **who approved it**.
+
+For example:
+
+```json
+{
+  "initiated_by": "AGENT",
+  "approved_by": "USR-COORD-01"
+}
+```
+
+That's much cleaner than saying the AI itself performed the operational action.
+
+---
+
+# 25. Recommended Master Enum File
+
+I strongly recommend Antigravity creates a single backend file:
+
+```text
+backend/app/core/enums.py
+```
+
+containing something like:
+
+```python
+from enum import Enum
+
+
+class UserRole(str, Enum):
+    CITIZEN = "CITIZEN"
+    RESPONDER = "RESPONDER"
+    COORDINATOR = "COORDINATOR"
+    ADMIN = "ADMIN"
+    MEDICAL = "MEDICAL"
+    SHELTER_MANAGER = "SHELTER_MANAGER"
+
+
+class AgeGroup(str, Enum):
+    CHILD = "CHILD"
+    ADULT = "ADULT"
+    ELDERLY = "ELDERLY"
+
+
+class MobilityLevel(str, Enum):
+    FULL = "FULL"
+    LIMITED = "LIMITED"
+    IMMOBILE = "IMMOBILE"
+
+
+class EmergencySeverity(int, Enum):
+    LOW = 1
+    MODERATE = 2
+    HIGH = 3
+    VERY_HIGH = 4
+    CRITICAL = 5
+
+
+class MedicalNeed(str, Enum):
+    NONE = "NONE"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+
+class PriorityLevel(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+
+class EmergencyStatus(str, Enum):
+    CREATED = "CREATED"
+    SYNCED = "SYNCED"
+    VALIDATED = "VALIDATED"
+    PRIORITIZED = "PRIORITIZED"
+    POLICY_SURFACED = "POLICY_SURFACED"
+    ASSIGNMENT_PENDING = "ASSIGNMENT_PENDING"
+    ASSIGNED = "ASSIGNED"
+    IN_PROGRESS = "IN_PROGRESS"
+    RESOLVED = "RESOLVED"
+    CANCELLED = "CANCELLED"
+    DUPLICATE = "DUPLICATE"
+
+
+class DisasterType(str, Enum):
+    FLOOD = "FLOOD"
+    CYCLONE = "CYCLONE"
+    EARTHQUAKE = "EARTHQUAKE"
+    LANDSLIDE = "LANDSLIDE"
+    FIRE = "FIRE"
+    TSUNAMI = "TSUNAMI"
+    DROUGHT = "DROUGHT"
+    HEATWAVE = "HEATWAVE"
+    URBAN_DISASTER = "URBAN_DISASTER"
+    MULTI_HAZARD = "MULTI_HAZARD"
+    OTHER = "OTHER"
+
+
+class ResourceAvailability(str, Enum):
+    AVAILABLE = "AVAILABLE"
+    BUSY = "BUSY"
+    UNAVAILABLE = "UNAVAILABLE"
+    OFFLINE = "OFFLINE"
+    MAINTENANCE = "MAINTENANCE"
+    RESERVED = "RESERVED"
+
+
+class RoadStatus(str, Enum):
+    OPEN = "OPEN"
+    PARTIALLY_BLOCKED = "PARTIALLY_BLOCKED"
+    BLOCKED = "BLOCKED"
+    RESTRICTED = "RESTRICTED"
+    UNKNOWN = "UNKNOWN"
+
+
+class VerificationStatus(str, Enum):
+    UNVERIFIED = "UNVERIFIED"
+    PARTIALLY_VERIFIED = "PARTIALLY_VERIFIED"
+    VERIFIED = "VERIFIED"
+    REJECTED = "REJECTED"
+    CONFLICTING = "CONFLICTING"
+
+
+class ConfidenceLevel(str, Enum):
+    VERY_LOW = "VERY_LOW"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    VERY_HIGH = "VERY_HIGH"
+
+
+class PopulationStatus(str, Enum):
+    NORMAL = "NORMAL"
+    ATTENTION = "ATTENTION"
+    CRITICAL = "CRITICAL"
+
+
+class MissingPersonStatus(str, Enum):
+    REPORTED = "REPORTED"
+    SEARCHING = "SEARCHING"
+    FOUND = "FOUND"
+    CLOSED = "CLOSED"
+
+
+class MissingPersonSource(str, Enum):
+    MANUAL = "MANUAL"
+    ZONE_GAP_INVESTIGATION = "ZONE_GAP_INVESTIGATION"
+
+
+class SimulationStatus(str, Enum):
+    CREATED = "CREATED"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+    APPLIED = "APPLIED"
+```
+
+---
+

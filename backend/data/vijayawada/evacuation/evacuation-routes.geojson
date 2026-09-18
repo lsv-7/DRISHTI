@@ -1,0 +1,23 @@
+{
+  "type": "FeatureCollection",
+  "name": "Vijayawada_Evacuation_Routes_Demo",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "EVAC_01",
+        "name": "Krishna Basin Primary Evacuation Corridor 01",
+        "status": "ACTIVE_RECOMMENDED",
+        "destination_shelter": "Vijayawada Municipal Indoor Relief Shelter (S01)"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [80.6480, 16.5062],
+          [80.6450, 16.5080],
+          [80.6400, 16.5120]
+        ]
+      }
+    }
+  ]
+}

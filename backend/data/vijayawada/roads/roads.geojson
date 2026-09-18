@@ -1,0 +1,57 @@
+{
+  "type": "FeatureCollection",
+  "name": "Vijayawada_Road_Network_OSM",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "R12",
+        "name": "Prakasam Barrage Main Arterial Road (R12)",
+        "status": "OPEN",
+        "speed_kmh": 40
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [80.6200, 16.5000],
+          [80.6480, 16.5062],
+          [80.6800, 16.5200]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "R14",
+        "name": "MG Road Corridor (R14)",
+        "status": "OPEN",
+        "speed_kmh": 50
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [80.6300, 16.5100],
+          [80.6500, 16.5150],
+          [80.6700, 16.5250]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "R20",
+        "name": "Eluru Road Alternate Bypass (R20)",
+        "status": "OPEN",
+        "speed_kmh": 45
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [80.6200, 16.5200],
+          [80.6550, 16.5300],
+          [80.6900, 16.5400]
+        ]
+      }
+    }
+  ]
+}
