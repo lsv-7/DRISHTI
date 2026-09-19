@@ -691,16 +691,20 @@ export const DEFAULT_MISSING_PERSONS = [
 
 // Helper to format Flutter Mobile and backend data objects
 function formatEmergencyItem(e) {
+  const lat = typeof e.latitude === 'number' ? e.latitude : parseFloat(e.latitude) || 16.5062;
+  const lon = typeof e.longitude === 'number' ? e.longitude : parseFloat(e.longitude) || 80.6480;
   return {
     ...e,
     id: e.id || `EMG-${Math.floor(Math.random()*900 + 100)}`,
     title: e.title || 'Mobile Field Emergency Incident',
     category: e.category || 'FLOOD_RESCUE',
+    latitude: lat,
+    longitude: lon,
     priority_score: e.priority_score ?? 85.0,
     priority_level: e.priority_level || (e.priority_score > 80 ? "CRITICAL" : "HIGH"),
     vulnerability_score: e.vulnerability_score ?? (e.vulnerability_snapshot ? 85.0 : 70.0),
     vulnerability_factors: e.vulnerability_factors || e.vulnerability_snapshot || { age: 65, swim_ability: false, mobility: "FULL" },
-    affected_count: e.affected_count || 4,
+    affected_count: e.affected_count || 1,
     status: e.status || "PENDING",
     created_at: e.created_at || new Date().toISOString()
   };
@@ -711,15 +715,9 @@ function mergeWithDefaults(incoming, defaults, keyField = 'id') {
   if (!Array.isArray(incoming) || incoming.length === 0) {
     return defaults;
   }
-  const incomingKeys = new Set(incoming.map(item => item[keyField] || item.title || item.name));
+  // Authoritative live backend data takes precedence: format and sort descending by timestamp
   const result = incoming.map(formatEmergencyItem);
-  
-  defaults.forEach(def => {
-    const key = def[keyField] || def.title || def.name;
-    if (!incomingKeys.has(key)) {
-      result.push(def);
-    }
-  });
+  result.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
   return result;
 }
 

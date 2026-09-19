@@ -66,6 +66,7 @@ export default function EmergenciesAdmin() {
           <thead>
             <tr>
               <th>Incident ID & Title</th>
+              <th>Reporter / Origin</th>
               <th>Category</th>
               <th>Priority Level & Score</th>
               <th>Vulnerability Score</th>
@@ -81,6 +82,32 @@ export default function EmergenciesAdmin() {
                 <td>
                   <strong style={{ color: 'var(--navy-deep)' }}>{e.title}</strong>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-sub)' }}>ID: {e.id}</div>
+                  {e.description && (
+                    <div style={{ fontSize: '0.75rem', color: '#475569', marginTop: '2px', maxWidth: '280px' }}>
+                      {e.description}
+                    </div>
+                  )}
+                </td>
+                <td>
+                  {e.reporter_name ? (
+                    <div>
+                      <span className="badge" style={{ backgroundColor: '#dbeafe', color: '#1d4ed8', fontWeight: 700, fontSize: '0.7rem' }}>
+                        📱 Mobile App
+                      </span>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-deep)', marginTop: '2px' }}>
+                        {e.reporter_name}
+                      </div>
+                      {e.contact_phone && (
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-sub)' }}>
+                          📞 {e.contact_phone}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="badge badge-navy" style={{ fontSize: '0.7rem' }}>
+                      Command Center / Field
+                    </span>
+                  )}
                 </td>
                 <td><span className="badge badge-navy">{e.category}</span></td>
                 <td>

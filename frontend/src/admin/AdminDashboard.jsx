@@ -269,9 +269,21 @@ export default function AdminDashboard() {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.35rem' }}>
-                  <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--navy-deep)', margin: 0 }}>
-                    {e.title}
-                  </h4>
+                  <div style={{ flex: 1, paddingRight: '0.5rem' }}>
+                    <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--navy-deep)', margin: 0 }}>
+                      {e.title}
+                    </h4>
+                    {e.reporter_name && (
+                      <div style={{ fontSize: '0.72rem', color: '#1d4ed8', fontWeight: 700, marginTop: '2px' }}>
+                        📱 Citizen: {e.reporter_name} {e.contact_phone ? `(${e.contact_phone})` : ''}
+                      </div>
+                    )}
+                    {e.description && (
+                      <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px' }}>
+                        {e.description}
+                      </div>
+                    )}
+                  </div>
                   <StatusBadge status={e.priority_level} />
                 </div>
 
