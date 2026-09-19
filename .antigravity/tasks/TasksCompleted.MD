@@ -820,6 +820,50 @@ Date: 2026-09-19
 3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/ -v` -> **13/13 PASSED in 2.26s**.
 4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 438ms**.
 
+---
+
+# T060 — Test Offline → Online Synchronization
+
+## Completed Work
+- **Capstone End-to-End Integration Test Suite** (`flutter-frontend/test/offline_to_online_sync_test.dart`):
+  - Created 10 comprehensive, automated end-to-end integration and scenario tests validating the complete offline-first DRISHTI emergency pipeline:
+    1. **Full End-to-End Lifecycle**: Citizen creates emergency while offline -> Local SQLite record created with `PENDING` state and UUID -> Network transitions to `ONLINE` -> Auto-sync triggers -> Server receives payload with frozen vulnerability snapshot -> Server reconciles authoritative ID (`E101-AUTH`) -> Local SQLite updated to `COMPLETED` -> Authoritative tracking status fetched and verified.
+    2. **Intermittent Flapping Network**: Offline service buffers multiple sequential incidents during disconnected/intermittent conditions (`offline` -> `intermittent` -> `offline`) without leaking or attempting network calls; full queue drains automatically upon reaching stable `online`.
+    3. **Manual Trigger Parity**: User-initiated "Sync Now" (`syncPendingQueue`) shares atomic synchronization lock with background automatic listener, prevents duplicate HTTP calls, and drains queue identically.
+    4. **Vulnerability Snapshot Immutability**: Citizen modifies vulnerability profile traits (e.g. changes mobility status, medical conditions) after submitting an offline emergency; upon reconnecting, the server receives the exact immutable profile snapshot captured at incident creation time.
+    5. **Cold Boot Simulation**: Complete process shutdown and cold restart simulation with new `OfflineService` instance; un-synced operations persist in local SQLite and auto-sync immediately drains them once network is established.
+    6. **Server Idempotency Replay (HTTP 200)**: Re-transmitting an idempotency key reconciles cleanly against existing server record without mutating or duplicating local SQLite rows.
+    7. **Batch Draining with Transient 503 Server Error**: Multi-item queue stops cleanly when a transient 503 server error occurs, keeping remaining items safely queued as retryable `PENDING` for subsequent reconnection cycles.
+    8. **Tracking Fetch Offline vs Online Fallback**: Verifies tracking retrieval works when online, fails gracefully when offline without crashing or corrupting local emergency repository.
+    9. **Zero Data Loss Invariant**: Local SQLite records remain completely intact and unmodified across multiple failed network attempts until positive authoritative acknowledgment from server.
+    10. **UI Widget State Transition**: Verified `HomeScreen` truthful visual state update (sync status banner transitions from "Offline Mode: Queued for sync" with warning orange `#F97316` to "All emergencies synchronized" with success green `#22C55E`) obeying the official DRISHTI color palette.
+- **Service Robustness Improvements** (`flutter-frontend/lib/services/offline_service.dart`):
+  - Made synchronization lock acquisition strictly atomic in `syncPendingQueue()` before entering the first asynchronous operation, preventing race conditions between concurrent sync triggers.
+  - Enhanced HTTP client lifetime management in `fetchEmergencyTracking()` to respect injected/default test clients and avoid premature client disposal.
+
+## Verification Summary
+1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 3.5s)** (0 errors, 0 warnings, 0 infos).
+2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **162/162 tests PASSED** across all 15 test suites:
+   - `test/offline_to_online_sync_test.dart` (10/10 PASSED)
+   - `test/automatic_sync_test.dart` (16/16 PASSED)
+   - `test/widget_test.dart` (1/1 PASSED)
+   - `test/pending_sync_status_test.dart` (5/5 PASSED)
+   - `test/idempotent_sync_test.dart` (6/6 PASSED)
+   - `test/sync_service_test.dart` (21/21 PASSED)
+   - `test/connectivity_service_test.dart` (13/13 PASSED)
+   - `test/pending_operation_queue_test.dart` (14/14 PASSED)
+   - `test/local_emergency_repository_test.dart` (14/14 PASSED)
+   - `test/database_test.dart` (10/10 PASSED)
+   - `test/validation_and_error_states_test.dart` (12/12 PASSED)
+   - `test/emergency_tracking_test.dart` (11/11 PASSED)
+   - `test/location_capture_test.dart` (14/14 PASSED)
+   - `test/emergency_reporting_test.dart` (7/7 PASSED)
+   - `test/emergency_snapshot_test.dart` (4/4 PASSED)
+   - `test/vulnerability_profile_test.dart` (4/4 PASSED)
+3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/ -v` -> **13/13 PASSED in 2.22s**.
+4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 494ms**.
+
+
 
 
 

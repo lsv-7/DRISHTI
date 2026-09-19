@@ -94,7 +94,7 @@
 - [x] T057 Implement idempotent synchronization.
 - [x] T058 Implement retry/backoff.
 - [x] T059 Show local pending/sync status in Flutter.
-- [ ] T060 Test offline → online synchronization.
+- [x] T060 Test offline → online synchronization.
 
 # Phase 7 — Vulnerability-Aware Priority Engine
 

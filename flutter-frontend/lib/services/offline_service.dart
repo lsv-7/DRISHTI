@@ -441,11 +441,6 @@ class OfflineService extends ChangeNotifier {
     // T058 Requirement 4: Concurrency protection lock
     if (_isSyncing) return [];
 
-    final pendingCount = await _queue.getPendingCount();
-    if (_localQueue.isEmpty && pendingCount == 0) {
-      return [];
-    }
-
     _isSyncing = true;
     if (!_isDisposed) notifyListeners();
 
@@ -455,6 +450,11 @@ class OfflineService extends ChangeNotifier {
     String? latestError;
 
     try {
+      final pendingCount = await _queue.getPendingCount();
+      if (_localQueue.isEmpty && pendingCount == 0) {
+        return [];
+      }
+
       // 1. Drain pending operations via the single SyncService engine in strict FIFO order
       results = await _syncService.syncAllPending(client: httpClient);
 
@@ -570,7 +570,8 @@ class OfflineService extends ChangeNotifier {
     }
 
     // 4. Online fetch directly from backend endpoint GET /api/v1/emergencies/{id}
-    final httpClient = client ?? http.Client();
+    final httpClient = client ?? _defaultClient ?? http.Client();
+    final shouldCloseClient = client == null && _defaultClient == null;
     try {
       final res = await httpClient.get(
         Uri.parse("$apiBase/emergencies/$emergencyId"),
@@ -611,7 +612,7 @@ class OfflineService extends ChangeNotifier {
 
       throw Exception("Network request failed: $e");
     } finally {
-      if (client == null) {
+      if (shouldCloseClient) {
         httpClient.close();
       }
     }
