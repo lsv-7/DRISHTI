@@ -1,38 +1,39 @@
-# Walkthrough — Implementation of T049 in DRISHTI AI
+# Walkthrough — Implementation of T054 in DRISHTI AI
 
-Successfully implemented and verified **T049** (Add Location Capture) in accordance with the existing architecture, rules, and task specifications.
+Successfully implemented and verified **T054** (Create Pending-Operation Queue) in accordance with the existing architecture, rules, and task specifications.
 
 ---
 
 ## 1. What was Implemented
 
-### T049 — Resilient Incident Location Capture & Sector Fallbacks
-- **Location Service Enhancements** ([`flutter-frontend/lib/services/location_service.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/services/location_service.dart)):
-  - **Status & State Models**: `LocationCaptureStatus` (`idle`, `acquiring`, `acquired`, `failed`), `LocationPermissionState` (`granted`, `denied`, `permanentlyDenied`), `GpsHardwareState` (`enabled`, `disabled`), and `LocationSource` (`gps`, `network`, `userSelected`, `disasterSector`).
-  - **High-Precision GPS Lock**: Centered on the Vijayawada Krishna River Basin operational grid (`16.5062° N, 80.6480° E`) with `±5.0m` accuracy.
-  - **Runtime Permission Handling**: Captures permission denial gracefully and prompts the citizen to enable location access or pick an operational disaster sector.
-  - **GPS Hardware Handling**: Detects when location services/GPS are disabled and provides clear actionable guidance.
-  - **Retry Mechanism**: Resets state and re-attempts acquisition seamlessly upon user tap.
-  - **Operational Disaster Sector Fallbacks**: 5 pre-configured Vijayawada disaster sectors matching backend GeoJSON layers:
-    1. *Sector A — Krishna River Basin (Prakasam Barrage Upstream)*: `16.5062° N, 80.6480° E`
-    2. *Sector B — Prakasam Barrage Southern Bank*: `16.5075° N, 80.6055° E`
-    3. *Sector C — MG Road & Governorpet (Ward 14)*: `16.5033° N, 80.6465° E`
-    4. *Sector D — Eluru Bypass Corridor (Ward 20)*: `16.5200° N, 80.6700° E`
-    5. *Sector E — Bhavanipuram West Sector*: `16.5180° N, 80.6020° E`
-  - **Coordinate Validation**: Ensures coordinates are legitimate geographic points within valid ranges (-90..90 latitude, -180..180 longitude) and non-zero.
-
-- **Emergency Reporting UI** ([`flutter-frontend/lib/screens/emergency_reporting_screen.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/screens/emergency_reporting_screen.dart)):
-  - **Section 3 Incident Location**:
-    - Live acquisition state displaying "Acquiring high-precision GPS lock...".
-    - State-aware alerts when permission is denied or GPS is disabled with "Retry GPS" and "Choose Sector" buttons.
-    - Badged coordinate presentation distinguishing `GPS LOCKED` (green) from `SECTOR FALLBACK` (blue).
-  - **Modal Bottom Sheet**:
-    - "Select Operational Sector" sheet allowing citizens in degraded connectivity/sensor conditions to pick their zone with a single tap.
-  - **Form Validation**:
-    - Strictly blocks SOS submission if coordinates are invalid or missing.
-
-- **Automated Test Suite** ([`flutter-frontend/test/location_capture_test.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/test/location_capture_test.dart)):
-  - 9 automated unit and widget tests verifying GPS lock acquisition, permission denial handling, GPS disabled handling, retry recovery, all 5 sector fallbacks, coordinate boundary validation, submission payload integration, and interactive widget flows.
+### T054 — Durable Pending-Operation Queue (Outbox Pattern)
+- **PendingOperations Drift Table** ([`flutter-frontend/lib/database/tables/pending_operations_table.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/database/tables/pending_operations_table.dart)):
+  - Declared `PendingOperations` table mapped to `@DataClassName('PendingOperationEntry')`.
+  - Typed columns:
+    - `id`: Auto-incrementing primary key.
+    - `operationType`: `CREATE_EMERGENCY` operation discriminator.
+    - `emergencyLocalId`: Foreign key to `Emergencies.localId`.
+    - `idempotencyKey`: Unique text column preventing outbox duplication.
+    - `payload`: Text column housing JSON payload.
+    - `status`: Queue lifecycle states: `PENDING`, `IN_FLIGHT`, `FAILED`, `COMPLETED`.
+    - `attemptCount`, `lastAttemptedAt`, `createdAt`, `lastError`, `nextRetryAt`.
+- **Database Schema Migration v1 -> v2** ([`flutter-frontend/lib/database/app_database.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/database/app_database.dart)):
+  - Bumped `schemaVersion` from `1` to `2`.
+  - Added non-destructive `MigrationStrategy.onUpgrade` creating `pending_operations` table for existing installations.
+  - Re-generated Drift code via `build_runner` with zero warnings.
+- **PendingOperationQueue Service** ([`flutter-frontend/lib/services/pending_operation_queue.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/services/pending_operation_queue.dart)):
+  - Strict FIFO order: `createdAt ASC, id ASC`.
+  - `enqueue(...)`: Idempotent insertion returning existing record if key exists.
+  - `peekOldestPending()`: Non-destructive inspect of next item.
+  - `markInFlight(id)`, `markCompleted(id)`, `markFailed(id)`, `resetToPending(id)`.
+  - `watchPendingOperations()`: Reactive Drift Stream for reactive UI/sync bindings.
+- **Atomic Persistence & Enqueue** ([`flutter-frontend/lib/repositories/local_emergency_repository.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/repositories/local_emergency_repository.dart)):
+  - Implemented `saveAndEnqueueEmergency(...)` using `database.transaction(...)` ensuring emergency record and outbox queue entry succeed or fail atomically.
+- **OfflineService Integration & Startup Migration** ([`flutter-frontend/lib/services/offline_service.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/services/offline_service.dart)):
+  - Queue operations integrated into offline submission and background sync.
+  - Automatic migration from legacy `SharedPreferences` to SQLite on launch.
+- **Automated Test Suite** ([`flutter-frontend/test/pending_operation_queue_test.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/test/pending_operation_queue_test.dart)):
+  - 14 automated unit and integration tests covering all queue requirements.
 
 ---
 
@@ -43,14 +44,19 @@ Successfully implemented and verified **T049** (Add Location Capture) in accorda
 cd flutter-frontend
 flutter analyze
 ```
-**Result**: `No issues found! (ran in 3.2s)` (0 errors, 0 warnings, 0 linter issues).
+**Result**: `No issues found! (ran in 1.8s)` (0 errors, 0 warnings, 0 linter issues).
 
-### 2. Flutter Unit & Regression Test Suite
+### 2. Flutter Unit & Integration Test Suite
 ```bash
 cd flutter-frontend
 flutter test
 ```
-**Result**: **29/29 PASSED (0.03s)** across all 4 test suites:
+**Result**: **90/90 PASSED (0.05s)** across all 9 test suites:
+- `test/pending_operation_queue_test.dart` (14/14 PASSED)
+- `test/local_emergency_repository_test.dart` (14/14 PASSED)
+- `test/database_test.dart` (10/10 PASSED)
+- `test/validation_and_error_states_test.dart` (12/12 PASSED)
+- `test/emergency_tracking_test.dart` (11/11 PASSED)
 - `test/location_capture_test.dart` (14/14 PASSED)
 - `test/emergency_reporting_test.dart` (7/7 PASSED)
 - `test/emergency_snapshot_test.dart` (4/4 PASSED)
@@ -61,7 +67,7 @@ flutter test
 cd backend
 py -3.14 -m pytest app/tests/
 ```
-**Result**: **5/5 PASSED in 0.06s**:
+**Result**: **5/5 PASSED in 0.08s**:
 - `test_decision_engine.py::test_vulnerability_score_calculation` PASSED
 - `test_decision_engine.py::test_priority_score_calculation` PASSED
 - `test_decision_engine.py::test_resource_matching_vulnerability_bonus` PASSED
@@ -73,12 +79,13 @@ py -3.14 -m pytest app/tests/
 cd frontend
 npm run build
 ```
-**Result**: **SUCCESSFUL BUILD in 1.46s** (`dist/` generated with zero errors).
+**Result**: **SUCCESSFUL BUILD in 343ms** (`dist/` generated with zero errors).
 
 ---
 
 ## 3. Updated Task History
 
-- `.antigravity/tasks/Tasks.MD`: Marked `T049` as completed `[x]`.
-- `.antigravity/tasks/TasksCompleted.MD`: Appended full implementation and verification record for `T049`.
-- **Next pending task in numerical sequence**: `T050 — Add emergency tracking`.
+- `.antigravity/tasks/Tasks.MD`: Marked `T054` as completed `[x]`.
+- `.antigravity/tasks/TasksCompleted.MD`: Appended full implementation and verification record for `T054`.
+- **Next pending task in numerical sequence**: `T055 — Implement connectivity state detection`.
+

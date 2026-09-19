@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'tables/emergencies_table.dart';
+import 'tables/pending_operations_table.dart';
 
 part 'app_database.g.dart';
 
@@ -14,14 +15,14 @@ part 'app_database.g.dart';
 ///
 /// Supports offline-first emergency caching, sync queues, and immutable snapshot
 /// preservation. Can be instantiated with an in-memory executor for hermetic tests.
-@DriftDatabase(tables: [Emergencies])
+@DriftDatabase(tables: [Emergencies, PendingOperations])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection()) {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -29,7 +30,9 @@ class AppDatabase extends _$AppDatabase {
           await m.createAll();
         },
         onUpgrade: (Migrator m, int from, int to) async {
-          // Future schema migrations will be handled here incrementally
+          if (from < 2) {
+            await m.createTable(pendingOperations);
+          }
         },
       );
 

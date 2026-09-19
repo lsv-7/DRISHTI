@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../models/vulnerability_profile.dart';
 import '../models/emergency_tracking.dart';
 import '../repositories/local_emergency_repository.dart';
+import 'pending_operation_queue.dart';
 
 enum ConnectivityState { online, intermittent, offline }
 
@@ -13,6 +14,7 @@ class OfflineService extends ChangeNotifier {
   static const String apiBase = "http://localhost:3000/api/v1";
   
   final LocalEmergencyRepository _repository;
+  final PendingOperationQueue _queue;
   ConnectivityState _connectivity = ConnectivityState.online;
   List<Map<String, dynamic>> _localQueue = [];
   VulnerabilityProfile? _userVulnerabilityProfile;
@@ -22,6 +24,7 @@ class OfflineService extends ChangeNotifier {
   late final Future<void> _initFuture;
 
   LocalEmergencyRepository get repository => _repository;
+  PendingOperationQueue get queue => _queue;
   ConnectivityState get connectivity => _connectivity;
   List<Map<String, dynamic>> get localQueue => _localQueue;
   Map<String, dynamic>? get activeEmergency => _activeEmergency;
@@ -43,8 +46,16 @@ class OfflineService extends ChangeNotifier {
 
   String get userId => _userId;
 
-  OfflineService({LocalEmergencyRepository? repository})
-      : _repository = repository ?? LocalEmergencyRepository() {
+  factory OfflineService({
+    LocalEmergencyRepository? repository,
+    PendingOperationQueue? queue,
+  }) {
+    final repo = repository ?? LocalEmergencyRepository();
+    final q = queue ?? PendingOperationQueue(repo.database);
+    return OfflineService._(repo, q);
+  }
+
+  OfflineService._(this._repository, this._queue) {
     _initFuture = _loadLocalData();
   }
 
@@ -70,12 +81,50 @@ class OfflineService extends ChangeNotifier {
       await prefs.setString('user_id', _userId);
     }
 
-    // Load Pending Offline Queue
-    final queueStr = prefs.getString('pending_queue') ?? '[]';
+    // Load Pending Offline Queue from durable SQLite queue
     try {
-      _localQueue = List<Map<String, dynamic>>.from(jsonDecode(queueStr));
+      final dbPending = await _queue.getPendingOperations();
+      _localQueue = dbPending.map((op) {
+        try {
+          return jsonDecode(op.payload) as Map<String, dynamic>;
+        } catch (_) {
+          return <String, dynamic>{
+            'idempotency_key': op.idempotencyKey,
+            'status': 'LOCAL_PENDING',
+            'sync_status': 'PENDING_SYNC',
+          };
+        }
+      }).toList();
     } catch (_) {
       _localQueue = [];
+    }
+
+    // Migrate any legacy SharedPreferences queue into SQLite queue
+    final queueStr = prefs.getString('pending_queue');
+    if (queueStr != null && queueStr.isNotEmpty && queueStr != '[]') {
+      try {
+        final legacyItems = List<Map<String, dynamic>>.from(jsonDecode(queueStr));
+        for (var item in legacyItems) {
+          final idempKey = item['idempotency_key'] as String? ?? const Uuid().v4();
+          await _queue.enqueue(
+            operationType: 'CREATE_EMERGENCY',
+            idempotencyKey: idempKey,
+            payload: item,
+          );
+        }
+        final refreshed = await _queue.getPendingOperations();
+        _localQueue = refreshed.map((op) {
+          try {
+            return jsonDecode(op.payload) as Map<String, dynamic>;
+          } catch (_) {
+            return <String, dynamic>{
+              'idempotency_key': op.idempotencyKey,
+              'status': 'LOCAL_PENDING',
+              'sync_status': 'PENDING_SYNC',
+            };
+          }
+        }).toList();
+      } catch (_) {}
     }
 
     // Load Vulnerability Profile
@@ -168,7 +217,10 @@ class OfflineService extends ChangeNotifier {
       payload["status"] = "LOCAL_PENDING";
       _localQueue.add(payload);
       _activeEmergency = Map<String, dynamic>.from(payload);
-      await _repository.saveEmergencyMap(payload);
+      await _repository.saveAndEnqueueEmergency(
+        payload: payload,
+        queue: _queue,
+      );
       await _saveQueueLocally();
       await _saveActiveEmergencyLocally();
       notifyListeners();
@@ -219,7 +271,10 @@ class OfflineService extends ChangeNotifier {
         payload["last_sync_error"] = "Server error ${res.statusCode}";
         _localQueue.add(payload);
         _activeEmergency = Map<String, dynamic>.from(payload);
-        await _repository.saveEmergencyMap(payload);
+        await _repository.saveAndEnqueueEmergency(
+          payload: payload,
+          queue: _queue,
+        );
         await _saveQueueLocally();
         await _saveActiveEmergencyLocally();
         notifyListeners();
@@ -239,7 +294,10 @@ class OfflineService extends ChangeNotifier {
       payload["last_sync_error"] = e.toString();
       _localQueue.add(payload);
       _activeEmergency = Map<String, dynamic>.from(payload);
-      await _repository.saveEmergencyMap(payload);
+      await _repository.saveAndEnqueueEmergency(
+        payload: payload,
+        queue: _queue,
+      );
       await _saveQueueLocally();
       await _saveActiveEmergencyLocally();
       notifyListeners();
@@ -278,15 +336,36 @@ class OfflineService extends ChangeNotifier {
             syncedData["sync_status"] = "SYNCED";
             syncedData["idempotency_key"] ??= item["idempotency_key"];
             await _repository.saveEmergencyMap(syncedData);
+            final key = item["idempotency_key"] as String?;
+            if (key != null) {
+              final op = await _queue.getOperationByIdempotencyKey(key);
+              if (op != null) {
+                await _queue.markCompleted(op.id);
+              }
+            }
           } else {
             item["last_sync_error"] = "Status ${res.statusCode}";
             remaining.add(item);
             latestError = "Server rejected item (status ${res.statusCode})";
+            final key = item["idempotency_key"] as String?;
+            if (key != null) {
+              final op = await _queue.getOperationByIdempotencyKey(key);
+              if (op != null) {
+                await _queue.markFailed(op.id, latestError);
+              }
+            }
           }
         } catch (e) {
           item["last_sync_error"] = e.toString();
           remaining.add(item);
           latestError = "Network error: $e";
+          final key = item["idempotency_key"] as String?;
+          if (key != null) {
+            final op = await _queue.getOperationByIdempotencyKey(key);
+            if (op != null) {
+              await _queue.markFailed(op.id, e.toString());
+            }
+          }
         }
       }
     } finally {

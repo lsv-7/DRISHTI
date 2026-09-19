@@ -376,6 +376,96 @@ Date: 2026-09-19
 3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/` -> **5/5 PASSED in 0.07s**.
 4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 431ms**.
 
+---
+
+# T054 — Create Pending-Operation Queue
+
+## Implementation Summary
+- **Durable Pending Operations Table** (`flutter-frontend/lib/database/tables/pending_operations_table.dart`):
+  - Created `PendingOperations` Drift table mapped to typed `PendingOperationEntry`.
+  - Schema includes:
+    - `id`: Auto-incrementing primary key integer.
+    - `operationType`: Text enum (`CREATE_EMERGENCY`).
+    - `emergencyLocalId`: Foreign key integer referencing `Emergencies.localId` (nullable).
+    - `idempotencyKey`: Text column with unique constraint to prevent duplicate enqueues.
+    - `payload`: Text column containing JSON-serialized request data.
+    - `status`: Text column tracking queue lifecycle (`PENDING`, `IN_FLIGHT`, `FAILED`, `COMPLETED`).
+    - `attemptCount`: Integer retry counter (default 0).
+    - `lastAttemptedAt`: DateTime timestamp of last sync attempt.
+    - `createdAt`: DateTime timestamp for deterministic FIFO ordering (`createdAt ASC, id ASC`).
+    - `lastError`: Text column capturing transient sync failure errors.
+    - `nextRetryAt`: DateTime timestamp for backoff scheduling.
+- **Database Schema Migration v1 -> v2** (`flutter-frontend/lib/database/app_database.dart` & `app_database.g.dart`):
+  - Registered `PendingOperations` table in `@DriftDatabase`.
+  - Upgraded `schemaVersion` from `1` to `2`.
+  - Implemented non-destructive migration strategy via `MigrationStrategy.onUpgrade`: automatically creates the `pending_operations` table for existing v1 installations without data loss.
+- **PendingOperationQueue Service** (`flutter-frontend/lib/services/pending_operation_queue.dart`):
+  - Created strongly-typed, durable FIFO queue service wrapping Drift database operations:
+    - `enqueue(...)`: Idempotently inserts pending operations, returning existing operation if duplicate `idempotencyKey` is provided.
+    - `peekOldestPending()`: Non-destructive read of oldest pending item (`status == PENDING`, ordered by `createdAt ASC, id ASC`).
+    - `getPendingOperations()`: Retrieves all pending operations in deterministic FIFO order.
+    - `markInFlight(int id)`: Transitions operation to `IN_FLIGHT` and updates attempt counter and timestamp.
+    - `markCompleted(int id)`: Transitions operation to `COMPLETED`.
+    - `markFailed(int id, {String? error, DateTime? nextRetryAt})`: Records failure with error message and increments attempts.
+    - `resetToPending(int id)`: Requeues an in-flight operation upon transient disconnect.
+    - `deleteOperation(int id)` & `clearQueue()`: Queue maintenance.
+    - `watchPendingOperations()`: Reactive Drift Stream providing real-time UI/service binding for queue size and state.
+- **Atomic Transaction Integration** (`flutter-frontend/lib/repositories/local_emergency_repository.dart`):
+  - Added `saveAndEnqueueEmergency(Map<String, dynamic> data, PendingOperationQueue queue)` running inside `database.transaction(...)`.
+  - Ensures both emergency record persistence and outbox operation enqueue succeed together or rollback completely.
+- **OfflineService Integration & Startup Migration** (`flutter-frontend/lib/services/offline_service.dart`):
+  - Injected `PendingOperationQueue` sharing database instance with `LocalEmergencyRepository`.
+  - `submitEmergency(...)` calls `saveAndEnqueueEmergency` on offline/network errors.
+  - `syncPendingQueue()` executes queue item completion/failure transitions in `PendingOperationQueue`.
+  - Startup migration: automatically scans legacy `SharedPreferences` pending emergency queues and migrates them into the durable SQLite `PendingOperations` table, preventing data loss across upgrades.
+  - Retained all existing public getters (`localQueue`, `activeEmergency`, `hasActiveEmergency`) to maintain 100% backward compatibility for existing screens and tests.
+- **Comprehensive Unit & Integration Test Suite** (`flutter-frontend/test/pending_operation_queue_test.dart`):
+  - 14 automated unit and integration tests verifying:
+    1. Schema version 2 initialization with empty table.
+    2. Enqueueing typed operation entry.
+    3. Deterministic FIFO ordering (`createdAt ASC, id ASC`).
+    4. Non-destructive `peekOldestPending`.
+    5. Lifecycle status transitions (`PENDING` -> `IN_FLIGHT` -> `COMPLETED`/`FAILED` -> reset).
+    6. Idempotency deduplication by unique key.
+    7. Vulnerability snapshot immutability inside queued payload.
+    8. Exact GPS/sector coordinates preserved in queued payload.
+    9. Atomic transaction: `saveAndEnqueueEmergency` creates both records atomically.
+    10. Deletion and full queue cleanup.
+    11. Reactive `watchPendingOperations` stream updates.
+    12. OfflineService integration: offline submission enqueues to SQLite queue.
+    13. OfflineService integration: sync marks queue operation `COMPLETED`.
+    14. Startup migration: legacy `SharedPreferences` items migrate into durable queue.
+
+### Files changed
+- `flutter-frontend/lib/database/tables/pending_operations_table.dart` (NEW)
+- `flutter-frontend/lib/services/pending_operation_queue.dart` (NEW)
+- `flutter-frontend/lib/database/app_database.dart` (MODIFIED)
+- `flutter-frontend/lib/database/app_database.g.dart` (MODIFIED/GENERATED)
+- `flutter-frontend/lib/repositories/local_emergency_repository.dart` (MODIFIED)
+- `flutter-frontend/lib/services/offline_service.dart` (MODIFIED)
+- `flutter-frontend/test/pending_operation_queue_test.dart` (NEW)
+- `flutter-frontend/test/database_test.dart` (MODIFIED)
+- `.antigravity/tasks/Tasks.MD` (MODIFIED)
+
+---
+
+## Verification Summary
+
+1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 1.8s)**.
+2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **90/90 tests PASSED** across all 9 test suites:
+   - `test/pending_operation_queue_test.dart` (14/14 PASSED)
+   - `test/local_emergency_repository_test.dart` (14/14 PASSED)
+   - `test/database_test.dart` (10/10 PASSED)
+   - `test/validation_and_error_states_test.dart` (12/12 PASSED)
+   - `test/emergency_tracking_test.dart` (11/11 PASSED)
+   - `test/location_capture_test.dart` (14/14 PASSED)
+   - `test/emergency_reporting_test.dart` (7/7 PASSED)
+   - `test/emergency_snapshot_test.dart` (4/4 PASSED)
+   - `test/vulnerability_profile_test.dart` (4/4 PASSED)
+3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/` -> **5/5 PASSED in 0.08s**.
+4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 343ms**.
+
+
 
 
 

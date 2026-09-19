@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
 import '../models/emergency_report.dart';
 import '../models/emergency_tracking.dart';
+import '../services/pending_operation_queue.dart';
 
 /// Repository interface for device-local emergency persistence.
 ///
@@ -183,6 +184,25 @@ class LocalEmergencyRepository {
     final localId = await database.insertEmergency(companion);
     final inserted = await database.getEmergencyByLocalId(localId);
     return inserted!;
+  }
+
+  /// Atomically persists an emergency and enqueues its pending transmission operation
+  /// within a single SQLite transaction.
+  Future<EmergencyEntry> saveAndEnqueueEmergency({
+    required Map<String, dynamic> payload,
+    required PendingOperationQueue queue,
+    String operationType = 'CREATE_EMERGENCY',
+  }) async {
+    return database.transaction(() async {
+      final entry = await saveEmergencyMap(payload);
+      await queue.enqueue(
+        operationType: operationType,
+        idempotencyKey: entry.idempotencyKey,
+        payload: payload,
+        emergencyLocalId: entry.localId,
+      );
+      return entry;
+    });
   }
 
   // ===========================================================================

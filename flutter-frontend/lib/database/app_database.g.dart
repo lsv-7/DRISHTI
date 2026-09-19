@@ -957,15 +957,615 @@ class EmergenciesCompanion extends UpdateCompanion<EmergencyEntry> {
   }
 }
 
+class $PendingOperationsTable extends PendingOperations
+    with TableInfo<$PendingOperationsTable, PendingOperationEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PendingOperationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _operationTypeMeta =
+      const VerificationMeta('operationType');
+  @override
+  late final GeneratedColumn<String> operationType = GeneratedColumn<String>(
+      'operation_type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _emergencyLocalIdMeta =
+      const VerificationMeta('emergencyLocalId');
+  @override
+  late final GeneratedColumn<int> emergencyLocalId = GeneratedColumn<int>(
+      'emergency_local_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _idempotencyKeyMeta =
+      const VerificationMeta('idempotencyKey');
+  @override
+  late final GeneratedColumn<String> idempotencyKey = GeneratedColumn<String>(
+      'idempotency_key', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
+  static const VerificationMeta _payloadMeta =
+      const VerificationMeta('payload');
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+      'payload', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('PENDING'));
+  static const VerificationMeta _attemptCountMeta =
+      const VerificationMeta('attemptCount');
+  @override
+  late final GeneratedColumn<int> attemptCount = GeneratedColumn<int>(
+      'attempt_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _lastAttemptedAtMeta =
+      const VerificationMeta('lastAttemptedAt');
+  @override
+  late final GeneratedColumn<DateTime> lastAttemptedAt =
+      GeneratedColumn<DateTime>('last_attempted_at', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _lastErrorMeta =
+      const VerificationMeta('lastError');
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+      'last_error', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _nextRetryAtMeta =
+      const VerificationMeta('nextRetryAt');
+  @override
+  late final GeneratedColumn<DateTime> nextRetryAt = GeneratedColumn<DateTime>(
+      'next_retry_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        operationType,
+        emergencyLocalId,
+        idempotencyKey,
+        payload,
+        status,
+        attemptCount,
+        lastAttemptedAt,
+        createdAt,
+        lastError,
+        nextRetryAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pending_operations';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<PendingOperationEntry> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('operation_type')) {
+      context.handle(
+          _operationTypeMeta,
+          operationType.isAcceptableOrUnknown(
+              data['operation_type']!, _operationTypeMeta));
+    } else if (isInserting) {
+      context.missing(_operationTypeMeta);
+    }
+    if (data.containsKey('emergency_local_id')) {
+      context.handle(
+          _emergencyLocalIdMeta,
+          emergencyLocalId.isAcceptableOrUnknown(
+              data['emergency_local_id']!, _emergencyLocalIdMeta));
+    }
+    if (data.containsKey('idempotency_key')) {
+      context.handle(
+          _idempotencyKeyMeta,
+          idempotencyKey.isAcceptableOrUnknown(
+              data['idempotency_key']!, _idempotencyKeyMeta));
+    } else if (isInserting) {
+      context.missing(_idempotencyKeyMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(_payloadMeta,
+          payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta));
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('attempt_count')) {
+      context.handle(
+          _attemptCountMeta,
+          attemptCount.isAcceptableOrUnknown(
+              data['attempt_count']!, _attemptCountMeta));
+    }
+    if (data.containsKey('last_attempted_at')) {
+      context.handle(
+          _lastAttemptedAtMeta,
+          lastAttemptedAt.isAcceptableOrUnknown(
+              data['last_attempted_at']!, _lastAttemptedAtMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(_lastErrorMeta,
+          lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta));
+    }
+    if (data.containsKey('next_retry_at')) {
+      context.handle(
+          _nextRetryAtMeta,
+          nextRetryAt.isAcceptableOrUnknown(
+              data['next_retry_at']!, _nextRetryAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PendingOperationEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PendingOperationEntry(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      operationType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}operation_type'])!,
+      emergencyLocalId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}emergency_local_id']),
+      idempotencyKey: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}idempotency_key'])!,
+      payload: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}payload'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      attemptCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}attempt_count'])!,
+      lastAttemptedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_attempted_at']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      lastError: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}last_error']),
+      nextRetryAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}next_retry_at']),
+    );
+  }
+
+  @override
+  $PendingOperationsTable createAlias(String alias) {
+    return $PendingOperationsTable(attachedDatabase, alias);
+  }
+}
+
+class PendingOperationEntry extends DataClass
+    implements Insertable<PendingOperationEntry> {
+  /// Local autoincrement operation ID
+  final int id;
+
+  /// Explicit operation type (e.g. `CREATE_EMERGENCY`)
+  final String operationType;
+
+  /// Associated emergency localId in SQLite Emergencies table, if available
+  final int? emergencyLocalId;
+
+  /// Unique client-generated UUID v4 idempotency key matching original emergency
+  final String idempotencyKey;
+
+  /// Exact JSON stringified request payload to be replayed verbatim
+  final String payload;
+
+  /// Operation queue state: PENDING, IN_FLIGHT, FAILED, COMPLETED
+  final String status;
+
+  /// Number of transmission attempts
+  final int attemptCount;
+
+  /// Timestamp of the latest transmission attempt
+  final DateTime? lastAttemptedAt;
+
+  /// Timestamp when operation was enqueued (for deterministic FIFO sorting)
+  final DateTime createdAt;
+
+  /// Diagnostic error message from latest failure
+  final String? lastError;
+
+  /// Timestamp when next retry is permitted (foundation for T058 backoff)
+  final DateTime? nextRetryAt;
+  const PendingOperationEntry(
+      {required this.id,
+      required this.operationType,
+      this.emergencyLocalId,
+      required this.idempotencyKey,
+      required this.payload,
+      required this.status,
+      required this.attemptCount,
+      this.lastAttemptedAt,
+      required this.createdAt,
+      this.lastError,
+      this.nextRetryAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['operation_type'] = Variable<String>(operationType);
+    if (!nullToAbsent || emergencyLocalId != null) {
+      map['emergency_local_id'] = Variable<int>(emergencyLocalId);
+    }
+    map['idempotency_key'] = Variable<String>(idempotencyKey);
+    map['payload'] = Variable<String>(payload);
+    map['status'] = Variable<String>(status);
+    map['attempt_count'] = Variable<int>(attemptCount);
+    if (!nullToAbsent || lastAttemptedAt != null) {
+      map['last_attempted_at'] = Variable<DateTime>(lastAttemptedAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    if (!nullToAbsent || nextRetryAt != null) {
+      map['next_retry_at'] = Variable<DateTime>(nextRetryAt);
+    }
+    return map;
+  }
+
+  PendingOperationsCompanion toCompanion(bool nullToAbsent) {
+    return PendingOperationsCompanion(
+      id: Value(id),
+      operationType: Value(operationType),
+      emergencyLocalId: emergencyLocalId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(emergencyLocalId),
+      idempotencyKey: Value(idempotencyKey),
+      payload: Value(payload),
+      status: Value(status),
+      attemptCount: Value(attemptCount),
+      lastAttemptedAt: lastAttemptedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttemptedAt),
+      createdAt: Value(createdAt),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+      nextRetryAt: nextRetryAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextRetryAt),
+    );
+  }
+
+  factory PendingOperationEntry.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PendingOperationEntry(
+      id: serializer.fromJson<int>(json['id']),
+      operationType: serializer.fromJson<String>(json['operationType']),
+      emergencyLocalId: serializer.fromJson<int?>(json['emergencyLocalId']),
+      idempotencyKey: serializer.fromJson<String>(json['idempotencyKey']),
+      payload: serializer.fromJson<String>(json['payload']),
+      status: serializer.fromJson<String>(json['status']),
+      attemptCount: serializer.fromJson<int>(json['attemptCount']),
+      lastAttemptedAt: serializer.fromJson<DateTime?>(json['lastAttemptedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+      nextRetryAt: serializer.fromJson<DateTime?>(json['nextRetryAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'operationType': serializer.toJson<String>(operationType),
+      'emergencyLocalId': serializer.toJson<int?>(emergencyLocalId),
+      'idempotencyKey': serializer.toJson<String>(idempotencyKey),
+      'payload': serializer.toJson<String>(payload),
+      'status': serializer.toJson<String>(status),
+      'attemptCount': serializer.toJson<int>(attemptCount),
+      'lastAttemptedAt': serializer.toJson<DateTime?>(lastAttemptedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'lastError': serializer.toJson<String?>(lastError),
+      'nextRetryAt': serializer.toJson<DateTime?>(nextRetryAt),
+    };
+  }
+
+  PendingOperationEntry copyWith(
+          {int? id,
+          String? operationType,
+          Value<int?> emergencyLocalId = const Value.absent(),
+          String? idempotencyKey,
+          String? payload,
+          String? status,
+          int? attemptCount,
+          Value<DateTime?> lastAttemptedAt = const Value.absent(),
+          DateTime? createdAt,
+          Value<String?> lastError = const Value.absent(),
+          Value<DateTime?> nextRetryAt = const Value.absent()}) =>
+      PendingOperationEntry(
+        id: id ?? this.id,
+        operationType: operationType ?? this.operationType,
+        emergencyLocalId: emergencyLocalId.present
+            ? emergencyLocalId.value
+            : this.emergencyLocalId,
+        idempotencyKey: idempotencyKey ?? this.idempotencyKey,
+        payload: payload ?? this.payload,
+        status: status ?? this.status,
+        attemptCount: attemptCount ?? this.attemptCount,
+        lastAttemptedAt: lastAttemptedAt.present
+            ? lastAttemptedAt.value
+            : this.lastAttemptedAt,
+        createdAt: createdAt ?? this.createdAt,
+        lastError: lastError.present ? lastError.value : this.lastError,
+        nextRetryAt: nextRetryAt.present ? nextRetryAt.value : this.nextRetryAt,
+      );
+  PendingOperationEntry copyWithCompanion(PendingOperationsCompanion data) {
+    return PendingOperationEntry(
+      id: data.id.present ? data.id.value : this.id,
+      operationType: data.operationType.present
+          ? data.operationType.value
+          : this.operationType,
+      emergencyLocalId: data.emergencyLocalId.present
+          ? data.emergencyLocalId.value
+          : this.emergencyLocalId,
+      idempotencyKey: data.idempotencyKey.present
+          ? data.idempotencyKey.value
+          : this.idempotencyKey,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      status: data.status.present ? data.status.value : this.status,
+      attemptCount: data.attemptCount.present
+          ? data.attemptCount.value
+          : this.attemptCount,
+      lastAttemptedAt: data.lastAttemptedAt.present
+          ? data.lastAttemptedAt.value
+          : this.lastAttemptedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+      nextRetryAt:
+          data.nextRetryAt.present ? data.nextRetryAt.value : this.nextRetryAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingOperationEntry(')
+          ..write('id: $id, ')
+          ..write('operationType: $operationType, ')
+          ..write('emergencyLocalId: $emergencyLocalId, ')
+          ..write('idempotencyKey: $idempotencyKey, ')
+          ..write('payload: $payload, ')
+          ..write('status: $status, ')
+          ..write('attemptCount: $attemptCount, ')
+          ..write('lastAttemptedAt: $lastAttemptedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastError: $lastError, ')
+          ..write('nextRetryAt: $nextRetryAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      operationType,
+      emergencyLocalId,
+      idempotencyKey,
+      payload,
+      status,
+      attemptCount,
+      lastAttemptedAt,
+      createdAt,
+      lastError,
+      nextRetryAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PendingOperationEntry &&
+          other.id == this.id &&
+          other.operationType == this.operationType &&
+          other.emergencyLocalId == this.emergencyLocalId &&
+          other.idempotencyKey == this.idempotencyKey &&
+          other.payload == this.payload &&
+          other.status == this.status &&
+          other.attemptCount == this.attemptCount &&
+          other.lastAttemptedAt == this.lastAttemptedAt &&
+          other.createdAt == this.createdAt &&
+          other.lastError == this.lastError &&
+          other.nextRetryAt == this.nextRetryAt);
+}
+
+class PendingOperationsCompanion
+    extends UpdateCompanion<PendingOperationEntry> {
+  final Value<int> id;
+  final Value<String> operationType;
+  final Value<int?> emergencyLocalId;
+  final Value<String> idempotencyKey;
+  final Value<String> payload;
+  final Value<String> status;
+  final Value<int> attemptCount;
+  final Value<DateTime?> lastAttemptedAt;
+  final Value<DateTime> createdAt;
+  final Value<String?> lastError;
+  final Value<DateTime?> nextRetryAt;
+  const PendingOperationsCompanion({
+    this.id = const Value.absent(),
+    this.operationType = const Value.absent(),
+    this.emergencyLocalId = const Value.absent(),
+    this.idempotencyKey = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.status = const Value.absent(),
+    this.attemptCount = const Value.absent(),
+    this.lastAttemptedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.nextRetryAt = const Value.absent(),
+  });
+  PendingOperationsCompanion.insert({
+    this.id = const Value.absent(),
+    required String operationType,
+    this.emergencyLocalId = const Value.absent(),
+    required String idempotencyKey,
+    required String payload,
+    this.status = const Value.absent(),
+    this.attemptCount = const Value.absent(),
+    this.lastAttemptedAt = const Value.absent(),
+    required DateTime createdAt,
+    this.lastError = const Value.absent(),
+    this.nextRetryAt = const Value.absent(),
+  })  : operationType = Value(operationType),
+        idempotencyKey = Value(idempotencyKey),
+        payload = Value(payload),
+        createdAt = Value(createdAt);
+  static Insertable<PendingOperationEntry> custom({
+    Expression<int>? id,
+    Expression<String>? operationType,
+    Expression<int>? emergencyLocalId,
+    Expression<String>? idempotencyKey,
+    Expression<String>? payload,
+    Expression<String>? status,
+    Expression<int>? attemptCount,
+    Expression<DateTime>? lastAttemptedAt,
+    Expression<DateTime>? createdAt,
+    Expression<String>? lastError,
+    Expression<DateTime>? nextRetryAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (operationType != null) 'operation_type': operationType,
+      if (emergencyLocalId != null) 'emergency_local_id': emergencyLocalId,
+      if (idempotencyKey != null) 'idempotency_key': idempotencyKey,
+      if (payload != null) 'payload': payload,
+      if (status != null) 'status': status,
+      if (attemptCount != null) 'attempt_count': attemptCount,
+      if (lastAttemptedAt != null) 'last_attempted_at': lastAttemptedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (lastError != null) 'last_error': lastError,
+      if (nextRetryAt != null) 'next_retry_at': nextRetryAt,
+    });
+  }
+
+  PendingOperationsCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? operationType,
+      Value<int?>? emergencyLocalId,
+      Value<String>? idempotencyKey,
+      Value<String>? payload,
+      Value<String>? status,
+      Value<int>? attemptCount,
+      Value<DateTime?>? lastAttemptedAt,
+      Value<DateTime>? createdAt,
+      Value<String?>? lastError,
+      Value<DateTime?>? nextRetryAt}) {
+    return PendingOperationsCompanion(
+      id: id ?? this.id,
+      operationType: operationType ?? this.operationType,
+      emergencyLocalId: emergencyLocalId ?? this.emergencyLocalId,
+      idempotencyKey: idempotencyKey ?? this.idempotencyKey,
+      payload: payload ?? this.payload,
+      status: status ?? this.status,
+      attemptCount: attemptCount ?? this.attemptCount,
+      lastAttemptedAt: lastAttemptedAt ?? this.lastAttemptedAt,
+      createdAt: createdAt ?? this.createdAt,
+      lastError: lastError ?? this.lastError,
+      nextRetryAt: nextRetryAt ?? this.nextRetryAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (operationType.present) {
+      map['operation_type'] = Variable<String>(operationType.value);
+    }
+    if (emergencyLocalId.present) {
+      map['emergency_local_id'] = Variable<int>(emergencyLocalId.value);
+    }
+    if (idempotencyKey.present) {
+      map['idempotency_key'] = Variable<String>(idempotencyKey.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (attemptCount.present) {
+      map['attempt_count'] = Variable<int>(attemptCount.value);
+    }
+    if (lastAttemptedAt.present) {
+      map['last_attempted_at'] = Variable<DateTime>(lastAttemptedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (nextRetryAt.present) {
+      map['next_retry_at'] = Variable<DateTime>(nextRetryAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingOperationsCompanion(')
+          ..write('id: $id, ')
+          ..write('operationType: $operationType, ')
+          ..write('emergencyLocalId: $emergencyLocalId, ')
+          ..write('idempotencyKey: $idempotencyKey, ')
+          ..write('payload: $payload, ')
+          ..write('status: $status, ')
+          ..write('attemptCount: $attemptCount, ')
+          ..write('lastAttemptedAt: $lastAttemptedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastError: $lastError, ')
+          ..write('nextRetryAt: $nextRetryAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $EmergenciesTable emergencies = $EmergenciesTable(this);
+  late final $PendingOperationsTable pendingOperations =
+      $PendingOperationsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [emergencies];
+  List<DatabaseSchemaEntity> get allSchemaEntities =>
+      [emergencies, pendingOperations];
 }
 
 typedef $$EmergenciesTableCreateCompanionBuilder = EmergenciesCompanion
@@ -1357,10 +1957,281 @@ typedef $$EmergenciesTableProcessedTableManager = ProcessedTableManager<
     ),
     EmergencyEntry,
     PrefetchHooks Function()>;
+typedef $$PendingOperationsTableCreateCompanionBuilder
+    = PendingOperationsCompanion Function({
+  Value<int> id,
+  required String operationType,
+  Value<int?> emergencyLocalId,
+  required String idempotencyKey,
+  required String payload,
+  Value<String> status,
+  Value<int> attemptCount,
+  Value<DateTime?> lastAttemptedAt,
+  required DateTime createdAt,
+  Value<String?> lastError,
+  Value<DateTime?> nextRetryAt,
+});
+typedef $$PendingOperationsTableUpdateCompanionBuilder
+    = PendingOperationsCompanion Function({
+  Value<int> id,
+  Value<String> operationType,
+  Value<int?> emergencyLocalId,
+  Value<String> idempotencyKey,
+  Value<String> payload,
+  Value<String> status,
+  Value<int> attemptCount,
+  Value<DateTime?> lastAttemptedAt,
+  Value<DateTime> createdAt,
+  Value<String?> lastError,
+  Value<DateTime?> nextRetryAt,
+});
+
+class $$PendingOperationsTableFilterComposer
+    extends Composer<_$AppDatabase, $PendingOperationsTable> {
+  $$PendingOperationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get operationType => $composableBuilder(
+      column: $table.operationType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get emergencyLocalId => $composableBuilder(
+      column: $table.emergencyLocalId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get idempotencyKey => $composableBuilder(
+      column: $table.idempotencyKey,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get payload => $composableBuilder(
+      column: $table.payload, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get attemptCount => $composableBuilder(
+      column: $table.attemptCount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastAttemptedAt => $composableBuilder(
+      column: $table.lastAttemptedAt,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+      column: $table.lastError, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get nextRetryAt => $composableBuilder(
+      column: $table.nextRetryAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$PendingOperationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PendingOperationsTable> {
+  $$PendingOperationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get operationType => $composableBuilder(
+      column: $table.operationType,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get emergencyLocalId => $composableBuilder(
+      column: $table.emergencyLocalId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get idempotencyKey => $composableBuilder(
+      column: $table.idempotencyKey,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+      column: $table.payload, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get attemptCount => $composableBuilder(
+      column: $table.attemptCount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastAttemptedAt => $composableBuilder(
+      column: $table.lastAttemptedAt,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+      column: $table.lastError, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get nextRetryAt => $composableBuilder(
+      column: $table.nextRetryAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$PendingOperationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PendingOperationsTable> {
+  $$PendingOperationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get operationType => $composableBuilder(
+      column: $table.operationType, builder: (column) => column);
+
+  GeneratedColumn<int> get emergencyLocalId => $composableBuilder(
+      column: $table.emergencyLocalId, builder: (column) => column);
+
+  GeneratedColumn<String> get idempotencyKey => $composableBuilder(
+      column: $table.idempotencyKey, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get attemptCount => $composableBuilder(
+      column: $table.attemptCount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastAttemptedAt => $composableBuilder(
+      column: $table.lastAttemptedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get nextRetryAt => $composableBuilder(
+      column: $table.nextRetryAt, builder: (column) => column);
+}
+
+class $$PendingOperationsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $PendingOperationsTable,
+    PendingOperationEntry,
+    $$PendingOperationsTableFilterComposer,
+    $$PendingOperationsTableOrderingComposer,
+    $$PendingOperationsTableAnnotationComposer,
+    $$PendingOperationsTableCreateCompanionBuilder,
+    $$PendingOperationsTableUpdateCompanionBuilder,
+    (
+      PendingOperationEntry,
+      BaseReferences<_$AppDatabase, $PendingOperationsTable,
+          PendingOperationEntry>
+    ),
+    PendingOperationEntry,
+    PrefetchHooks Function()> {
+  $$PendingOperationsTableTableManager(
+      _$AppDatabase db, $PendingOperationsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PendingOperationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PendingOperationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PendingOperationsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> operationType = const Value.absent(),
+            Value<int?> emergencyLocalId = const Value.absent(),
+            Value<String> idempotencyKey = const Value.absent(),
+            Value<String> payload = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<int> attemptCount = const Value.absent(),
+            Value<DateTime?> lastAttemptedAt = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<String?> lastError = const Value.absent(),
+            Value<DateTime?> nextRetryAt = const Value.absent(),
+          }) =>
+              PendingOperationsCompanion(
+            id: id,
+            operationType: operationType,
+            emergencyLocalId: emergencyLocalId,
+            idempotencyKey: idempotencyKey,
+            payload: payload,
+            status: status,
+            attemptCount: attemptCount,
+            lastAttemptedAt: lastAttemptedAt,
+            createdAt: createdAt,
+            lastError: lastError,
+            nextRetryAt: nextRetryAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String operationType,
+            Value<int?> emergencyLocalId = const Value.absent(),
+            required String idempotencyKey,
+            required String payload,
+            Value<String> status = const Value.absent(),
+            Value<int> attemptCount = const Value.absent(),
+            Value<DateTime?> lastAttemptedAt = const Value.absent(),
+            required DateTime createdAt,
+            Value<String?> lastError = const Value.absent(),
+            Value<DateTime?> nextRetryAt = const Value.absent(),
+          }) =>
+              PendingOperationsCompanion.insert(
+            id: id,
+            operationType: operationType,
+            emergencyLocalId: emergencyLocalId,
+            idempotencyKey: idempotencyKey,
+            payload: payload,
+            status: status,
+            attemptCount: attemptCount,
+            lastAttemptedAt: lastAttemptedAt,
+            createdAt: createdAt,
+            lastError: lastError,
+            nextRetryAt: nextRetryAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$PendingOperationsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $PendingOperationsTable,
+    PendingOperationEntry,
+    $$PendingOperationsTableFilterComposer,
+    $$PendingOperationsTableOrderingComposer,
+    $$PendingOperationsTableAnnotationComposer,
+    $$PendingOperationsTableCreateCompanionBuilder,
+    $$PendingOperationsTableUpdateCompanionBuilder,
+    (
+      PendingOperationEntry,
+      BaseReferences<_$AppDatabase, $PendingOperationsTable,
+          PendingOperationEntry>
+    ),
+    PendingOperationEntry,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
   $$EmergenciesTableTableManager get emergencies =>
       $$EmergenciesTableTableManager(_db, _db.emergencies);
+  $$PendingOperationsTableTableManager get pendingOperations =>
+      $$PendingOperationsTableTableManager(_db, _db.pendingOperations);
 }

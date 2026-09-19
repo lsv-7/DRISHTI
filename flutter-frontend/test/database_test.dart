@@ -19,7 +19,7 @@ void main() {
     });
 
     test('1. Database initializes with correct schema version and empty tables', () async {
-      expect(db.schemaVersion, equals(1));
+      expect(db.schemaVersion, equals(2));
       final all = await db.getAllEmergencies();
       expect(all, isEmpty);
     });
