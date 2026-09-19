@@ -5,6 +5,7 @@ import '../services/offline_service.dart';
 import '../widgets/educational_disclaimer_card.dart';
 import 'profile_screen.dart';
 import 'emergency_reporting_screen.dart';
+import 'emergency_tracking_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -69,6 +70,12 @@ class HomeScreen extends StatelessWidget {
             // Profile Summary Card
             _buildProfileSummaryCard(context, profile, profileStatus),
             const SizedBox(height: 16),
+
+            // Active or Pending Emergency Tracking Card
+            if (offlineService.hasActiveEmergency || queueCount > 0) ...[
+              _buildActiveEmergencyCard(context, offlineService),
+              const SizedBox(height: 16),
+            ],
 
             // Prominent SOS / Emergency Section
             _buildEmergencyTriggerCard(context, offlineService),
@@ -278,6 +285,120 @@ class HomeScreen extends StatelessWidget {
           color: isAlert ? const Color(0xFFF87171) : const Color(0xFFCBD5E1),
           fontSize: 11,
         ),
+      ),
+    );
+  }
+
+  Widget _buildActiveEmergencyCard(BuildContext context, OfflineService service) {
+    final active = service.activeEmergency ?? (service.localQueue.isNotEmpty ? service.localQueue.first : null);
+    if (active == null) return const SizedBox.shrink();
+
+    final emergencyId = active['id'] as String? ?? active['idempotency_key'] as String? ?? 'DR-LOCAL';
+    final title = active['title'] as String? ?? 'Emergency Incident';
+    final status = (active['status'] as String? ?? 'PENDING').toUpperCase();
+    final isLocalPending = status == 'LOCAL_PENDING' || active['sync_status'] == 'PENDING_SYNC';
+
+    Color statusColor;
+    switch (status) {
+      case 'LOCAL_PENDING':
+        statusColor = const Color(0xFFF59E0B);
+        break;
+      case 'ASSIGNED':
+        statusColor = const Color(0xFF8B5CF6);
+        break;
+      case 'IN_PROGRESS':
+        statusColor = const Color(0xFF06B6D4);
+        break;
+      case 'RESOLVED':
+        statusColor = const Color(0xFF10B981);
+        break;
+      default:
+        statusColor = const Color(0xFFEF4444);
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: statusColor.withValues(alpha: 0.6), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isLocalPending ? Icons.pending_actions_rounded : Icons.radar_rounded,
+                    color: statusColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    isLocalPending ? "OFFLINE EMERGENCY QUEUED" : "ACTIVE EMERGENCY",
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  status,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "ID: $emergencyId",
+            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: statusColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: const Icon(Icons.track_changes_rounded, size: 16),
+              label: Text(
+                isLocalPending ? "View Local Status" : "Track Response",
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => EmergencyTrackingScreen(emergencyId: emergencyId),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

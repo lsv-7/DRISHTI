@@ -81,7 +81,7 @@
 - [x] T047 Implement emergency status transitions.
 - [x] T048 Build Flutter emergency reporting flow.
 - [x] T049 Add location capture.
-- [ ] T050 Add emergency tracking.
+- [x] T050 Add emergency tracking.
 - [ ] T051 Add validation and error states.
 
 # Phase 6 — Offline-First (Flutter)

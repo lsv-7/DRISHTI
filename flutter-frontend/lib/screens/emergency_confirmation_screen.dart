@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'emergency_tracking_screen.dart';
 import 'home_screen.dart';
 
 class EmergencyConfirmationScreen extends StatelessWidget {
@@ -244,12 +245,36 @@ class EmergencyConfirmationScreen extends StatelessWidget {
                 const SizedBox(height: 24),
               ],
 
-              // Return to Home Action Button
-              ElevatedButton(
+              // Track Emergency Action Button
+              ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3B82F6), // Accent Blue
+                  backgroundColor: const Color(0xFFEF4444),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 3,
+                ),
+                icon: const Icon(Icons.track_changes_rounded, size: 20),
+                label: Text(
+                  isOnline ? "TRACK EMERGENCY STATUS" : "VIEW LOCAL STATUS",
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.6),
+                ),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => EmergencyTrackingScreen(emergencyId: emergencyId),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+
+              // Return to Home Action Button
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF94A3B8),
+                  side: const BorderSide(color: Color(0xFF334155)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 onPressed: () {

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/vulnerability_profile.dart';
+import '../models/emergency_tracking.dart';
 
 enum ConnectivityState { online, intermittent, offline }
 
@@ -13,11 +14,14 @@ class OfflineService extends ChangeNotifier {
   ConnectivityState _connectivity = ConnectivityState.online;
   List<Map<String, dynamic>> _localQueue = [];
   VulnerabilityProfile? _userVulnerabilityProfile;
+  Map<String, dynamic>? _activeEmergency;
   String _userId = "usr_citizen_local";
   late final Future<void> _initFuture;
 
   ConnectivityState get connectivity => _connectivity;
   List<Map<String, dynamic>> get localQueue => _localQueue;
+  Map<String, dynamic>? get activeEmergency => _activeEmergency;
+  bool get hasActiveEmergency => _activeEmergency != null || _localQueue.isNotEmpty;
   
   /// Returns the current active vulnerability profile, or a default profile if not configured.
   VulnerabilityProfile get vulnerabilityProfile =>
@@ -78,6 +82,17 @@ class OfflineService extends ChangeNotifier {
         _userVulnerabilityProfile = null;
       }
     }
+
+    // Load Active Emergency
+    final activeStr = prefs.getString('active_emergency');
+    if (activeStr != null) {
+      try {
+        _activeEmergency = jsonDecode(activeStr) as Map<String, dynamic>;
+      } catch (_) {
+        _activeEmergency = null;
+      }
+    }
+
     notifyListeners();
   }
 
@@ -143,8 +158,11 @@ class OfflineService extends ChangeNotifier {
     };
 
     if (_connectivity == ConnectivityState.offline) {
+      payload["status"] = "LOCAL_PENDING";
       _localQueue.add(payload);
+      _activeEmergency = Map<String, dynamic>.from(payload);
       await _saveQueueLocally();
+      await _saveActiveEmergencyLocally();
       notifyListeners();
       return {
         "status": "SAVED_LOCALLY",
@@ -164,6 +182,8 @@ class OfflineService extends ChangeNotifier {
       if (res.statusCode == 200 || res.statusCode == 201) {
         final data = jsonDecode(res.body);
         data["sync_status"] = "SYNCED";
+        _activeEmergency = Map<String, dynamic>.from(data);
+        await _saveActiveEmergencyLocally();
         return {
           "status": "SUCCESS",
           "sync_status": "SYNCED",
@@ -175,8 +195,11 @@ class OfflineService extends ChangeNotifier {
       }
     } catch (e) {
       payload["sync_status"] = "PENDING_SYNC";
+      payload["status"] = "LOCAL_PENDING";
       _localQueue.add(payload);
+      _activeEmergency = Map<String, dynamic>.from(payload);
       await _saveQueueLocally();
+      await _saveActiveEmergencyLocally();
       notifyListeners();
       return {
         "status": "SAVED_LOCALLY",
@@ -216,5 +239,96 @@ class OfflineService extends ChangeNotifier {
   Future<void> _saveQueueLocally() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('pending_queue', jsonEncode(_localQueue));
+  }
+
+  Future<void> _saveActiveEmergencyLocally() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_activeEmergency != null) {
+      await prefs.setString('active_emergency', jsonEncode(_activeEmergency));
+    } else {
+      await prefs.remove('active_emergency');
+    }
+  }
+
+  /// Sets the currently tracked active emergency explicitly (e.g. for testing or selection)
+  Future<void> setActiveEmergency(Map<String, dynamic>? emergency) async {
+    await _initFuture;
+    _activeEmergency = emergency != null ? Map<String, dynamic>.from(emergency) : null;
+    await _saveActiveEmergencyLocally();
+    notifyListeners();
+  }
+
+  /// Fetches emergency tracking details from the authoritative FastAPI backend
+  /// (`GET /api/v1/emergencies/{id}`), or resolves from the local offline queue.
+  Future<EmergencyTracking> fetchEmergencyTracking(
+    String emergencyId, {
+    http.Client? client,
+  }) async {
+    await _initFuture;
+
+    // 1. Check local offline queue first for LOCAL_PENDING item
+    for (var item in _localQueue) {
+      final itemId = item['id'] as String? ?? item['idempotency_key'] as String?;
+      if (itemId == emergencyId || item['idempotency_key'] == emergencyId) {
+        return EmergencyTracking.fromLocalEmergency(item);
+      }
+    }
+
+    // 2. If device is offline, check if activeEmergency matches
+    if (_connectivity == ConnectivityState.offline) {
+      if (_activeEmergency != null) {
+        final actId = _activeEmergency!['id'] as String? ?? _activeEmergency!['idempotency_key'] as String?;
+        if (actId == emergencyId || _activeEmergency!['idempotency_key'] == emergencyId) {
+          if (_activeEmergency!['sync_status'] == 'PENDING_SYNC' || _activeEmergency!['status'] == 'LOCAL_PENDING') {
+            return EmergencyTracking.fromLocalEmergency(_activeEmergency!);
+          } else {
+            return EmergencyTracking.fromJson(_activeEmergency!);
+          }
+        }
+      }
+      throw Exception("Device is offline. Emergency data cannot be retrieved from server.");
+    }
+
+    // 3. Online fetch directly from backend endpoint GET /api/v1/emergencies/{id}
+    final httpClient = client ?? http.Client();
+    try {
+      final res = await httpClient.get(
+        Uri.parse("$apiBase/emergencies/$emergencyId"),
+        headers: {"Accept": "application/json"},
+      ).timeout(const Duration(seconds: 5));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        data["sync_status"] = "SYNCED";
+        _activeEmergency = Map<String, dynamic>.from(data);
+        await _saveActiveEmergencyLocally();
+        notifyListeners();
+        return EmergencyTracking.fromJson(data);
+      } else if (res.statusCode == 404) {
+        throw Exception("Emergency report not found on server.");
+      } else {
+        throw Exception("Server returned error ${res.statusCode} while fetching emergency tracking.");
+      }
+    } catch (e) {
+      if (e is Exception &&
+          (e.toString().contains("not found on server") ||
+           e.toString().contains("Emergency report not found"))) {
+        rethrow;
+      }
+
+      // If network fails but we have cached active emergency matching the ID, use it
+      if (_activeEmergency != null) {
+        final actId = _activeEmergency!['id'] as String? ?? _activeEmergency!['idempotency_key'] as String?;
+        if (actId == emergencyId) {
+          return EmergencyTracking.fromJson(_activeEmergency!);
+        }
+      }
+
+      throw Exception("Network request failed: $e");
+    } finally {
+      if (client == null) {
+        httpClient.close();
+      }
+    }
   }
 }

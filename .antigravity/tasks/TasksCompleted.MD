@@ -141,15 +141,61 @@ Date: 2026-09-18
 
 ---
 
+## T050 – Emergency Tracking
+
+Status: COMPLETED  
+Date: 2026-09-19
+
+### What was implemented
+- Created strongly-typed `EmergencyTracking` domain model (`flutter-frontend/lib/models/emergency_tracking.dart`) aligning directly with FastAPI `EmergencyResponse` schema:
+  - Exact backend status handling (`PENDING`, `ASSIGNED`, `IN_PROGRESS`, `RESOLVED`, `CANCELLED`) and offline mode (`LOCAL_PENDING`).
+  - Response progression timeline mapping (Step 0: Logged on Device / Local Queue, Step 1: Received / Queued by Server, Step 2: Resource Assigned, Step 3: Response In Progress, Step 4: Resolved).
+  - Status colors and badge icons matching DRISHTI command-center themes.
+  - Priority evaluation extraction (`priority_level`, `priority_score`, `priority_reasons`).
+  - Truthful status explanations without fabricating arrival ETAs, fake team names, or artificial real-time websocket pushes (complying strictly with Rule 3 & Rule 15).
+  - Privacy-preserving vulnerability snapshot indicator acknowledging that special dispatch needs were attached without exposing private medical or disability details.
+- Extended `OfflineService` (`flutter-frontend/lib/services/offline_service.dart`):
+  - Added `activeEmergency` state management with persistent `SharedPreferences` caching (`active_emergency`).
+  - Updated `submitEmergency()` to set `activeEmergency` on both online transmissions and offline queue entries.
+  - Implemented `fetchEmergencyTracking(emergencyId)`:
+    - Resolves instantly from `_localQueue` for offline queue items with `LOCAL_PENDING` status.
+    - Resolves from backend via `GET /api/v1/emergencies/{id}` when online.
+    - Handles 404 Emergency Not Found truthfully with clear user error messaging.
+    - Falls back gracefully to locally cached `activeEmergency` during network dropouts.
+- Built `EmergencyTrackingScreen` (`flutter-frontend/lib/screens/emergency_tracking_screen.dart`):
+  - Disaster-situation monitoring view with Emergency ID and Status badge.
+  - Response Progression timeline stepper.
+  - Incident details summary (category, title, people count, coordinates, transmission mode).
+  - Priority evaluation panel displaying backend Decision Engine factors.
+  - Privacy-preserving vulnerability snapshot indicator.
+  - Last updated timestamp and manual REST refresh button.
+  - Clean error state display for offline/disconnected states and retry actions.
+- Integrated Navigation across Mobile App:
+  - `EmergencyConfirmationScreen` (`flutter-frontend/lib/screens/emergency_confirmation_screen.dart`): Added prominent "TRACK EMERGENCY STATUS" (online) and "VIEW LOCAL STATUS" (offline) action buttons directly launching `EmergencyTrackingScreen`.
+  - `HomeScreen` (`flutter-frontend/lib/screens/home_screen.dart`): Added active/pending emergency card banner that dynamically appears when an emergency is active or queued offline, with "Track Response" or "View Local Status" buttons.
+- Created comprehensive unit and widget test suite (`flutter-frontend/test/emergency_tracking_test.dart`):
+  - 11 comprehensive tests covering model serialization/deserialization, local offline queue item mapping, status progression timeline mapping, online backend fetch via `MockClient`, 404 not-found handling, offline resolution, network error fallback to cache, widget rendering of incident and priority data, truthful `LOCAL_PENDING` badge rendering, and end-to-end navigation from both `HomeScreen` and `EmergencyConfirmationScreen`.
+
+### Files changed
+- `flutter-frontend/lib/models/emergency_tracking.dart` (NEW)
+- `flutter-frontend/lib/screens/emergency_tracking_screen.dart` (NEW)
+- `flutter-frontend/lib/screens/emergency_confirmation_screen.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/home_screen.dart` (MODIFIED)
+- `flutter-frontend/lib/services/offline_service.dart` (MODIFIED)
+- `flutter-frontend/test/emergency_tracking_test.dart` (NEW)
+
+---
+
 ## Verification Summary
 
-1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 3.2s)**.
-2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **29/29 tests PASSED (0.03s)** across all 4 test suites:
+1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 2.1s)**.
+2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **40/40 tests PASSED (0.02s)** across all 5 test suites:
+   - `test/emergency_tracking_test.dart` (11/11 PASSED)
    - `test/location_capture_test.dart` (14/14 PASSED)
    - `test/emergency_reporting_test.dart` (7/7 PASSED)
    - `test/emergency_snapshot_test.dart` (4/4 PASSED)
    - `test/vulnerability_profile_test.dart` (4/4 PASSED)
-3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/` -> **5/5 PASSED in 0.06s**.
-4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 1.46s**.
+3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/` -> **5/5 PASSED in 0.08s**.
+4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 559ms**.
 
 
