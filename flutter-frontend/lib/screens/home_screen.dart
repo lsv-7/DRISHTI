@@ -491,6 +491,13 @@ class HomeScreen extends StatelessWidget {
                       : "All emergency reports are synchronized.",
                   style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
                 ),
+                if (service.lastSyncError != null && queueCount > 0) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    "Sync warning: ${service.lastSyncError!}",
+                    style: const TextStyle(color: Color(0xFFF87171), fontSize: 10, fontWeight: FontWeight.w500),
+                  ),
+                ],
               ],
             ),
           ),

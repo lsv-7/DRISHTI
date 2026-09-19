@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/emergency_tracking.dart';
 import '../services/offline_service.dart';
+import 'package:http/http.dart' as http;
 import 'home_screen.dart';
 
 class EmergencyTrackingScreen extends StatefulWidget {
   final String emergencyId;
   final EmergencyTracking? initialData;
+  final http.Client? client;
 
   const EmergencyTrackingScreen({
     super.key,
     required this.emergencyId,
     this.initialData,
+    this.client,
   });
 
   @override
@@ -31,6 +34,15 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
   }
 
   Future<void> _fetchTracking() async {
+    final trimmedId = widget.emergencyId.trim();
+    if (trimmedId.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = "Invalid emergency ID provided.";
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -39,7 +51,7 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
     final offlineService = Provider.of<OfflineService>(context, listen: false);
 
     try {
-      final result = await offlineService.fetchEmergencyTracking(widget.emergencyId);
+      final result = await offlineService.fetchEmergencyTracking(trimmedId, client: widget.client);
       if (mounted) {
         setState(() {
           _tracking = result;
@@ -127,6 +139,7 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
     }
 
     if (_tracking == null && _errorMessage != null) {
+      final isNotFound = _errorMessage!.contains("not found");
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -136,27 +149,53 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
         ),
         child: Column(
           children: [
-            const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 40),
+            Icon(
+              isNotFound ? Icons.search_off_rounded : Icons.error_outline_rounded,
+              color: const Color(0xFFEF4444),
+              size: 40,
+            ),
             const SizedBox(height: 12),
-            const Text(
-              "Tracking Unavailable",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+            Text(
+              isNotFound ? "Emergency Report Not Found (404)" : "Tracking Unavailable",
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 8),
             Text(
-              _errorMessage!,
+              isNotFound
+                  ? "No incident matches ID '${widget.emergencyId}' on the command center server. It may have expired, been cancelled, or the ID was misentered."
+                  : _errorMessage!,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
             ),
             const SizedBox(height: 16),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF3B82F6),
-                foregroundColor: Colors.white,
-              ),
-              onPressed: _fetchTracking,
-              icon: const Icon(Icons.refresh_rounded, size: 16),
-              label: const Text("Retry Connection"),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3B82F6),
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _fetchTracking,
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text("Retry Connection"),
+                ),
+                const SizedBox(width: 10),
+                OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFCBD5E1),
+                    side: const BorderSide(color: Color(0xFF334155)),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const HomeScreen()),
+                      (route) => false,
+                    );
+                  },
+                  child: const Text("Home"),
+                ),
+              ],
             ),
           ],
         ),
@@ -169,6 +208,31 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Offline Warning Banner
+        if (isOffline) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.5)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.wifi_off_rounded, color: Color(0xFFF59E0B), size: 16),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "Device is currently OFFLINE. Displaying cached local tracking data.",
+                    style: TextStyle(color: Color(0xFFFDE68A), fontSize: 11, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
         // Error banner if refresh failed while displaying stale data
         if (_errorMessage != null) ...[
           Container(
@@ -180,11 +244,11 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline, color: Color(0xFFEF4444), size: 16),
+                const Icon(Icons.sync_problem_rounded, color: Color(0xFFEF4444), size: 16),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    _errorMessage!,
+                    "Status refresh failed: $_errorMessage (showing cached state).",
                     style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 11),
                   ),
                 ),

@@ -186,16 +186,60 @@ Date: 2026-09-19
 
 ---
 
+## T051 – Add Validation and Error States
+
+Status: COMPLETED  
+Date: 2026-09-19
+
+### What was implemented
+- **Comprehensive Domain Validation Model** (`flutter-frontend/lib/models/emergency_report.dart`):
+  - Created `EmergencyValidationResult` struct providing granular `fieldErrors` mapping and `primaryError`.
+  - Defined strict allowed category whitelist (`validCategories`: `FLOOD_RESCUE`, `MEDICAL_EMERGENCY`, `TRAPPED_CITIZENS`, `SHELTER_EVACUATION`, `RELIEF_SUPPLY`, `OTHER`).
+  - Added `validateDetailed()` with strict bounds:
+    - `title`: required, trimmed min 5 chars, max 150 chars.
+    - `description`: optional, max 500 chars.
+    - `category`: non-empty, must match whitelist.
+    - `affected_count`: bounded between 1 and 1000 persons.
+    - `latitude`/`longitude`: geographic bounds check (`[-90, 90]` and `[-180, 180]`), non-zero coordinates check.
+- **Service-Level Error Handling & Queue Hygiene** (`flutter-frontend/lib/services/offline_service.dart`):
+  - Updated `submitEmergency()` to differentiate client-side schema validation errors (HTTP 400/422) from transient server outages (HTTP 5xx, timeouts, socket errors).
+  - Schema errors (400/422) rethrow clear validation exceptions with backend details and do not corrupt the offline queue.
+  - Server errors (500) and timeouts fall back gracefully to the local queue with `last_sync_error` tracking and transparent status notification.
+  - Added `lastSyncError` state tracking on `OfflineService` and updated `syncPendingQueue()` to record sync failure reasons.
+- **Form UI Validation & Error Alert States** (`flutter-frontend/lib/screens/emergency_reporting_screen.dart`):
+  - Added inline form field validators with custom `errorBorder` and `focusedErrorBorder` highlighting.
+  - Added character counter to title (`maxLength: 150`) and description (`maxLength: 500`).
+  - Added dismissable top validation error banner displaying actionable feedback when inputs or locations are invalid.
+  - Added dismissable submission error banner displaying clear backend error messages.
+- **Tracking Screen Error Handling & Stale Data Awareness** (`flutter-frontend/lib/screens/emergency_tracking_screen.dart`):
+  - Implemented dedicated 404 Emergency Not Found card with search icon, clear explanation, "Retry Connection", and "Home" navigation.
+  - Added offline banner notifying the user that the device is offline and displaying cached tracking data.
+  - Added refresh warning banner when background refresh fails without losing cached state.
+  - Added ID validation prior to network dispatch.
+- **Comprehensive Test Suite** (`flutter-frontend/test/validation_and_error_states_test.dart`):
+  - 12 automated unit and widget tests covering all field constraints, 422 vs 500 service error handling, queue sync failure tracking, inline form validation error rendering, 404 not-found card rendering, and offline banner display.
+
+### Files changed
+- `flutter-frontend/lib/models/emergency_report.dart` (MODIFIED)
+- `flutter-frontend/lib/services/offline_service.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/emergency_reporting_screen.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/emergency_tracking_screen.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/home_screen.dart` (MODIFIED)
+- `flutter-frontend/test/validation_and_error_states_test.dart` (NEW)
+
+---
+
 ## Verification Summary
 
-1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 2.1s)**.
-2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **40/40 tests PASSED (0.02s)** across all 5 test suites:
+1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 2.4s)**.
+2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **52/52 tests PASSED (0.02s)** across all 6 test suites:
+   - `test/validation_and_error_states_test.dart` (12/12 PASSED)
    - `test/emergency_tracking_test.dart` (11/11 PASSED)
    - `test/location_capture_test.dart` (14/14 PASSED)
    - `test/emergency_reporting_test.dart` (7/7 PASSED)
    - `test/emergency_snapshot_test.dart` (4/4 PASSED)
    - `test/vulnerability_profile_test.dart` (4/4 PASSED)
-3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/` -> **5/5 PASSED in 0.08s**.
-4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 559ms**.
+3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/` -> **5/5 PASSED in 0.06s**.
+4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 478ms**.
 
 

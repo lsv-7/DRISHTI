@@ -23,6 +23,8 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
   LocationResult _location = LocationResult.defaultVijayawada();
   bool _isAcquiringLocation = false;
   bool _isSubmitting = false;
+  String? _formValidationError;
+  String? _submissionError;
 
   final List<Map<String, dynamic>> _categories = const [
     {
@@ -220,13 +222,27 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
   }
 
   void _submitReport() async {
-    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _formValidationError = null;
+      _submissionError = null;
+    });
+
+    if (!_formKey.currentState!.validate()) {
+      setState(() {
+        _formValidationError = "Please fix the highlighted form errors before submitting.";
+      });
+      return;
+    }
 
     if (!_location.isValid) {
+      const locationMsg = "Valid incident location is required. Please acquire GPS or select an emergency sector.";
+      setState(() {
+        _formValidationError = locationMsg;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: Color(0xFFEF4444),
-          content: Text("Valid incident location is required. Please acquire GPS or select an emergency sector."),
+          content: Text(locationMsg),
         ),
       );
       return;
@@ -246,12 +262,16 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
       createdAt: DateTime.now(),
     );
 
-    final validationError = reportModel.validate();
-    if (validationError != null) {
+    final validationResult = reportModel.validateDetailed();
+    if (!validationResult.isValid) {
+      final msg = validationResult.primaryError ?? "Validation error";
+      setState(() {
+        _formValidationError = msg;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: const Color(0xFFEF4444),
-          content: Text(validationError),
+          content: Text(msg),
         ),
       );
       return;
@@ -279,11 +299,15 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isSubmitting = false);
+        final cleanMsg = e.toString().replaceAll('Exception: ', '');
+        setState(() {
+          _isSubmitting = false;
+          _submissionError = cleanMsg;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: const Color(0xFFEF4444),
-            content: Text("Submission error: $e"),
+            content: Text("Submission error: $cleanMsg"),
           ),
         );
       }
@@ -342,6 +366,77 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Validation Error Banner
+              if (_formValidationError != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.6)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _formValidationError!,
+                          style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 16, color: Color(0xFFFCA5A5)),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () => setState(() => _formValidationError = null),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Submission Error Banner
+              if (_submissionError != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.6)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B), size: 20),
+                          const SizedBox(width: 8),
+                          const Text(
+                            "Submission Notice",
+                            style: TextStyle(color: Color(0xFFFBBF24), fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 16, color: Color(0xFFFBBF24)),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => setState(() => _submissionError = null),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _submissionError!,
+                        style: const TextStyle(color: Color(0xFFFDE68A), fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
               // 1. Emergency Category Selection
               const Text(
                 "1. Select Emergency Type",
@@ -683,34 +778,80 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
               const SizedBox(height: 8),
               TextFormField(
                 controller: _titleController,
+                maxLength: 150,
                 style: const TextStyle(color: Colors.white, fontSize: 13),
                 decoration: InputDecoration(
-                  labelText: "Title / Short Summary",
+                  labelText: "Title / Short Summary *",
                   labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
                   filled: true,
                   fillColor: const Color(0xFF1E293B),
+                  counterStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 10),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: const BorderSide(color: Color(0xFF334155)),
                   ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFF334155)),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFEF4444)),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+                  ),
                 ),
-                validator: (val) => (val == null || val.trim().isEmpty) ? "Summary is required" : null,
+                validator: (val) {
+                  final trimmed = val?.trim() ?? '';
+                  if (trimmed.isEmpty) {
+                    return "Emergency title or summary is required.";
+                  }
+                  if (trimmed.length < 5) {
+                    return "Emergency title must be at least 5 characters.";
+                  }
+                  if (trimmed.length > 150) {
+                    return "Emergency title cannot exceed 150 characters.";
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: _descriptionController,
                 maxLines: 2,
+                maxLength: 500,
                 style: const TextStyle(color: Colors.white, fontSize: 13),
                 decoration: InputDecoration(
                   hintText: "Specific hazards (e.g. electrical wire submerged, water at waist level, elderly trapped)...",
                   hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
                   filled: true,
                   fillColor: const Color(0xFF1E293B),
+                  counterStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 10),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: const BorderSide(color: Color(0xFF334155)),
                   ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFF334155)),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFEF4444)),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+                  ),
                 ),
+                validator: (val) {
+                  if (val != null && val.trim().length > 500) {
+                    return "Description cannot exceed 500 characters.";
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 8),
 

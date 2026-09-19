@@ -13,6 +13,20 @@
 // vulnerability_snapshot: Map<String, dynamic>? (Immutable snapshot from VulnerabilityProfile)
 // idempotency_key: String? (UUID v4)
 
+class EmergencyValidationResult {
+  final bool isValid;
+  final String? primaryError;
+  final Map<String, String> fieldErrors;
+
+  const EmergencyValidationResult({
+    required this.isValid,
+    this.primaryError,
+    this.fieldErrors = const {},
+  });
+
+  static const valid = EmergencyValidationResult(isValid: true);
+}
+
 class EmergencyReport {
   final String? id;
   final String? idempotencyKey;
@@ -48,27 +62,69 @@ class EmergencyReport {
     this.vulnerabilityScore,
   });
 
-  /// Validates coordinates and required fields. Returns null if valid, or an error message.
-  String? validate() {
-    if (title.trim().isEmpty) {
-      return "Emergency title or summary is required.";
+  static const List<String> validCategories = [
+    'FLOOD_RESCUE',
+    'MEDICAL_EMERGENCY',
+    'TRAPPED_CITIZENS',
+    'SHELTER_EVACUATION',
+    'RELIEF_SUPPLY',
+    'OTHER',
+  ];
+
+  /// Performs comprehensive field-level validation and returns an EmergencyValidationResult
+  EmergencyValidationResult validateDetailed() {
+    final errors = <String, String>{};
+
+    final trimmedTitle = title.trim();
+    if (trimmedTitle.isEmpty) {
+      errors['title'] = "Emergency title or summary is required.";
+    } else if (trimmedTitle.length < 5) {
+      errors['title'] = "Emergency title must be at least 5 characters.";
+    } else if (trimmedTitle.length > 150) {
+      errors['title'] = "Emergency title cannot exceed 150 characters.";
     }
+
+    if (description != null && description!.trim().length > 500) {
+      errors['description'] = "Description cannot exceed 500 characters.";
+    }
+
     if (category.trim().isEmpty) {
-      return "Emergency category must be selected.";
+      errors['category'] = "Emergency category must be selected.";
+    } else if (!validCategories.contains(category)) {
+      errors['category'] = "Invalid emergency category ($category).";
     }
+
     if (latitude < -90.0 || latitude > 90.0) {
-      return "Invalid latitude ($latitude). Must be between -90 and 90.";
+      errors['latitude'] = "Invalid latitude ($latitude). Must be between -90 and 90.";
     }
     if (longitude < -180.0 || longitude > 180.0) {
-      return "Invalid longitude ($longitude). Must be between -180 and 180.";
+      errors['longitude'] = "Invalid longitude ($longitude). Must be between -180 and 180.";
     }
     if (latitude == 0.0 && longitude == 0.0) {
-      return "Location cannot be at (0, 0). Valid GPS coordinates required.";
+      errors['location'] = "Location cannot be at (0, 0). Valid GPS coordinates required.";
     }
+
     if (affectedCount < 1) {
-      return "Affected count must be at least 1 person.";
+      errors['affected_count'] = "Affected count must be at least 1 person.";
+    } else if (affectedCount > 1000) {
+      errors['affected_count'] = "Affected count cannot exceed 1000 people per incident.";
     }
-    return null;
+
+    if (errors.isNotEmpty) {
+      return EmergencyValidationResult(
+        isValid: false,
+        primaryError: errors.values.first,
+        fieldErrors: errors,
+      );
+    }
+
+    return EmergencyValidationResult.valid;
+  }
+
+  /// Validates coordinates and required fields. Returns null if valid, or an error message.
+  String? validate() {
+    final res = validateDetailed();
+    return res.isValid ? null : res.primaryError;
   }
 
   bool get isValid => validate() == null;
