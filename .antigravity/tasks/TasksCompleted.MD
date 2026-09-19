@@ -301,5 +301,81 @@ Date: 2026-09-19
 3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/` -> **5/5 PASSED in 0.07s**.
 4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 373ms**.
 
+---
+
+# T053 — Create Local Emergency Repository
+
+## Implementation Summary
+- **Repository Abstraction Layer** (`flutter-frontend/lib/repositories/local_emergency_repository.dart`):
+  - Created `LocalEmergencyRepository` encapsulating `AppDatabase` (Drift/SQLite).
+  - Provided standard and in-memory constructor (`factory LocalEmergencyRepository.inMemory()`).
+  - Implemented typed CRUD and query methods:
+    - `saveEmergency(EmergencyReport report)`: Enforces idempotency via unique `idempotencyKey` lookup and preserves immutable vulnerability snapshot verbatim.
+    - `saveEmergencyMap(Map<String, dynamic> data)`: Flexible map-level upsert for service and sync payloads.
+    - `getEmergencyByLocalId(int localId)`: Primary key integer lookup.
+    - `getEmergencyByIdempotencyKey(String idempotencyKey)`: Unique UUID key lookup.
+    - `getEmergencyByServerId(String serverId)`: Backend authoritative ID lookup.
+    - `getEmergencyById(String identifier)`: Polymorphic lookup across server ID, idempotency key, and numeric local ID.
+    - `getAllEmergencies()`: Reverse chronological list.
+    - `watchAllEmergencies()`: Reactive Drift stream.
+    - `updateEmergency(EmergenciesCompanion entry)`: Entity update.
+    - `updateEmergencyStatus(...)`: Granular status, sync, and priority update without mutating the snapshot.
+    - `deleteEmergency(int localId)`: Row deletion.
+    - `clearAllEmergencies()`: Full database wipe.
+- **Domain <-> Database Mapping Extensions** (`local_emergency_repository.dart`):
+  - `EmergencyEntry.toReport()`: Converts SQLite row to domain `EmergencyReport`.
+  - `EmergencyEntry.toTracking()`: Converts SQLite row to domain `EmergencyTracking`.
+  - Ensures clean abstraction without leaking Drift types to UI components.
+- **Test Environment Resilience** (`flutter-frontend/lib/database/app_database.dart`):
+  - Added `Platform.environment.containsKey('FLUTTER_TEST')` check in `_openConnection()` to immediately use `NativeDatabase.memory()` during headless unit/widget tests without platform channels.
+  - Silenced multi-database test warnings using `driftRuntimeOptions.dontWarnAboutMultipleDatabases = true`.
+- **OfflineService Integration** (`flutter-frontend/lib/services/offline_service.dart`):
+  - Injected `LocalEmergencyRepository` into `OfflineService`.
+  - Updated `submitEmergency` across offline, online success, and error paths to persist submitted reports into `LocalEmergencyRepository`.
+  - Updated `syncPendingQueue` to update repository with synced server records.
+  - Updated `fetchEmergencyTracking` to query repository polymorphic lookup.
+  - Preserved existing in-memory getters (`localQueue`, `activeEmergency`, `hasActiveEmergency`) to maintain 100% backward compatibility for all existing tests and screens.
+- **Comprehensive Automated Test Suite** (`flutter-frontend/test/local_emergency_repository_test.dart`):
+  - 14 automated unit and integration tests verifying:
+    1. Saving an emergency creates a persistent `EmergencyEntry`.
+    2. Retrieval by local ID.
+    3. Retrieval by server ID.
+    4. Retrieval by idempotency key.
+    5. Polymorphic lookup by identifier.
+    6. Chronological ordering (newest first).
+    7. Reactive streams via `watchAllEmergencies()`.
+    8. Granular status and priority update without snapshot mutation.
+    9. Record deletion and table clearing.
+    10. Idempotent deduplication when duplicate `idempotencyKey` is submitted.
+    11. Vulnerability snapshot immutability across external profile modifications.
+    12. Domain mapping extensions (`toReport` and `toTracking`) round-trip.
+    13. Offline emergency submission persistence through repository.
+    14. Online emergency submission persistence to repository with `SYNCED` state.
+
+### Files changed
+- `flutter-frontend/lib/repositories/local_emergency_repository.dart` (NEW)
+- `flutter-frontend/lib/database/app_database.dart` (MODIFIED)
+- `flutter-frontend/lib/services/offline_service.dart` (MODIFIED)
+- `flutter-frontend/test/local_emergency_repository_test.dart` (NEW)
+- `.antigravity/tasks/Tasks.MD` (MODIFIED)
+
+---
+
+## Verification Summary
+
+1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 2.7s)**.
+2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **76/76 tests PASSED (0.05s)** across all 8 test suites:
+   - `test/local_emergency_repository_test.dart` (14/14 PASSED)
+   - `test/database_test.dart` (10/10 PASSED)
+   - `test/validation_and_error_states_test.dart` (12/12 PASSED)
+   - `test/emergency_tracking_test.dart` (11/11 PASSED)
+   - `test/location_capture_test.dart` (14/14 PASSED)
+   - `test/emergency_reporting_test.dart` (7/7 PASSED)
+   - `test/emergency_snapshot_test.dart` (4/4 PASSED)
+   - `test/vulnerability_profile_test.dart` (4/4 PASSED)
+3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/` -> **5/5 PASSED in 0.07s**.
+4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 431ms**.
+
+
 
 

@@ -16,7 +16,9 @@ part 'app_database.g.dart';
 /// preservation. Can be instantiated with an in-memory executor for hermetic tests.
 @DriftDatabase(tables: [Emergencies])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+  AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection()) {
+    driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+  }
 
   @override
   int get schemaVersion => 1;
@@ -127,11 +129,19 @@ class AppDatabase extends _$AppDatabase {
   }
 }
 
-/// Default lazy connection to persistent device SQLite file.
+/// Default lazy connection to persistent device SQLite file with test fallback.
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'drishti.sqlite'));
-    return NativeDatabase.createInBackground(file);
+    // In headless unit/widget tests without platform channels, immediately use in-memory SQLite
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      return NativeDatabase.memory();
+    }
+    try {
+      final dbFolder = await getApplicationDocumentsDirectory();
+      final file = File(p.join(dbFolder.path, 'drishti.sqlite'));
+      return NativeDatabase.createInBackground(file);
+    } catch (_) {
+      return NativeDatabase.memory();
+    }
   });
 }

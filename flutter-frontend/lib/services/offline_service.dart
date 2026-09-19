@@ -5,12 +5,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/vulnerability_profile.dart';
 import '../models/emergency_tracking.dart';
+import '../repositories/local_emergency_repository.dart';
 
 enum ConnectivityState { online, intermittent, offline }
 
 class OfflineService extends ChangeNotifier {
   static const String apiBase = "http://localhost:3000/api/v1";
   
+  final LocalEmergencyRepository _repository;
   ConnectivityState _connectivity = ConnectivityState.online;
   List<Map<String, dynamic>> _localQueue = [];
   VulnerabilityProfile? _userVulnerabilityProfile;
@@ -19,6 +21,7 @@ class OfflineService extends ChangeNotifier {
   String? _lastSyncError;
   late final Future<void> _initFuture;
 
+  LocalEmergencyRepository get repository => _repository;
   ConnectivityState get connectivity => _connectivity;
   List<Map<String, dynamic>> get localQueue => _localQueue;
   Map<String, dynamic>? get activeEmergency => _activeEmergency;
@@ -40,7 +43,8 @@ class OfflineService extends ChangeNotifier {
 
   String get userId => _userId;
 
-  OfflineService() {
+  OfflineService({LocalEmergencyRepository? repository})
+      : _repository = repository ?? LocalEmergencyRepository() {
     _initFuture = _loadLocalData();
   }
 
@@ -164,6 +168,7 @@ class OfflineService extends ChangeNotifier {
       payload["status"] = "LOCAL_PENDING";
       _localQueue.add(payload);
       _activeEmergency = Map<String, dynamic>.from(payload);
+      await _repository.saveEmergencyMap(payload);
       await _saveQueueLocally();
       await _saveActiveEmergencyLocally();
       notifyListeners();
@@ -186,7 +191,9 @@ class OfflineService extends ChangeNotifier {
       if (res.statusCode == 200 || res.statusCode == 201) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         data["sync_status"] = "SYNCED";
+        data["idempotency_key"] ??= idempotencyKey;
         _activeEmergency = Map<String, dynamic>.from(data);
+        await _repository.saveEmergencyMap(data);
         await _saveActiveEmergencyLocally();
         notifyListeners();
         return {
@@ -212,6 +219,7 @@ class OfflineService extends ChangeNotifier {
         payload["last_sync_error"] = "Server error ${res.statusCode}";
         _localQueue.add(payload);
         _activeEmergency = Map<String, dynamic>.from(payload);
+        await _repository.saveEmergencyMap(payload);
         await _saveQueueLocally();
         await _saveActiveEmergencyLocally();
         notifyListeners();
@@ -231,6 +239,7 @@ class OfflineService extends ChangeNotifier {
       payload["last_sync_error"] = e.toString();
       _localQueue.add(payload);
       _activeEmergency = Map<String, dynamic>.from(payload);
+      await _repository.saveEmergencyMap(payload);
       await _saveQueueLocally();
       await _saveActiveEmergencyLocally();
       notifyListeners();
@@ -265,7 +274,10 @@ class OfflineService extends ChangeNotifier {
           ).timeout(const Duration(seconds: 5));
 
           if (res.statusCode == 200 || res.statusCode == 201) {
-            // Synced successfully
+            final syncedData = jsonDecode(res.body) as Map<String, dynamic>;
+            syncedData["sync_status"] = "SYNCED";
+            syncedData["idempotency_key"] ??= item["idempotency_key"];
+            await _repository.saveEmergencyMap(syncedData);
           } else {
             item["last_sync_error"] = "Status ${res.statusCode}";
             remaining.add(item);
@@ -312,7 +324,7 @@ class OfflineService extends ChangeNotifier {
   }
 
   /// Fetches emergency tracking details from the authoritative FastAPI backend
-  /// (`GET /api/v1/emergencies/{id}`), or resolves from the local offline queue.
+  /// (`GET /api/v1/emergencies/{id}`), or resolves from the local offline repository/queue.
   Future<EmergencyTracking> fetchEmergencyTracking(
     String emergencyId, {
     http.Client? client,
@@ -327,7 +339,16 @@ class OfflineService extends ChangeNotifier {
       }
     }
 
-    // 2. If device is offline, check if activeEmergency matches
+    // 2. Check local repository
+    final localRecord = await _repository.getEmergencyById(emergencyId);
+    if (localRecord != null &&
+        (_connectivity == ConnectivityState.offline ||
+            localRecord.syncStatus == 'PENDING_SYNC' ||
+            localRecord.status == 'LOCAL_PENDING')) {
+      return localRecord.toTracking();
+    }
+
+    // 3. If device is offline, check if activeEmergency matches
     if (_connectivity == ConnectivityState.offline) {
       if (_activeEmergency != null) {
         final actId = _activeEmergency!['id'] as String? ?? _activeEmergency!['idempotency_key'] as String?;
@@ -342,7 +363,7 @@ class OfflineService extends ChangeNotifier {
       throw Exception("Device is offline. Emergency data cannot be retrieved from server.");
     }
 
-    // 3. Online fetch directly from backend endpoint GET /api/v1/emergencies/{id}
+    // 4. Online fetch directly from backend endpoint GET /api/v1/emergencies/{id}
     final httpClient = client ?? http.Client();
     try {
       final res = await httpClient.get(
@@ -354,6 +375,7 @@ class OfflineService extends ChangeNotifier {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         data["sync_status"] = "SYNCED";
         _activeEmergency = Map<String, dynamic>.from(data);
+        await _repository.saveEmergencyMap(data);
         await _saveActiveEmergencyLocally();
         notifyListeners();
         return EmergencyTracking.fromJson(data);
@@ -365,7 +387,7 @@ class OfflineService extends ChangeNotifier {
     } catch (e) {
       if (e is Exception &&
           (e.toString().contains("not found on server") ||
-           e.toString().contains("Emergency report not found"))) {
+              e.toString().contains("Emergency report not found"))) {
         rethrow;
       }
 
@@ -375,6 +397,10 @@ class OfflineService extends ChangeNotifier {
         if (actId == emergencyId) {
           return EmergencyTracking.fromJson(_activeEmergency!);
         }
+      }
+
+      if (localRecord != null) {
+        return localRecord.toTracking();
       }
 
       throw Exception("Network request failed: $e");

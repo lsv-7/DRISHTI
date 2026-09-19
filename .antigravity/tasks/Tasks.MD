@@ -87,7 +87,7 @@
 # Phase 6 — Offline-First (Flutter)
 
 - [x] T052 Add Drift/SQLite local database.
-- [ ] T053 Create local emergency repository.
+- [x] T053 Create local emergency repository.
 - [ ] T054 Create pending-operation queue.
 - [ ] T055 Implement connectivity state detection.
 - [ ] T056 Implement sync API.
