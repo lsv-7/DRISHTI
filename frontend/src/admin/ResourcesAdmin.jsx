@@ -149,9 +149,25 @@ export default function ResourcesAdmin() {
                       <span className="badge" style={{ backgroundColor: '#E0F2FE', color: '#0369A1', border: '1px solid #7DD3FC', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                         <Smartphone size={12} /> Mobile Flutter App
                       </span>
-                    ) : isOrg ? (
-                      <span className="badge" style={{ backgroundColor: '#F0FDF4', color: '#15803D', border: '1px solid #86EFAC', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                        <Building2 size={12} /> {r.source || 'Organization'}
+                    ) : r.organization_type === 'HOSPITAL' || (r.source && r.source.includes('Hospital')) ? (
+                      <span className="badge" style={{ backgroundColor: '#FEE2E2', color: '#991B1B', border: '1px solid #FCA5A5', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                        🏥 Hospital Center
+                      </span>
+                    ) : r.organization_type === 'POLICE' || (r.source && r.source.includes('Police')) ? (
+                      <span className="badge" style={{ backgroundColor: '#DBEAFE', color: '#1E40AF', border: '1px solid #93C5FD', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                        👮 Police Control HQ
+                      </span>
+                    ) : r.organization_type === 'FIRE' || (r.source && r.source.includes('Fire')) ? (
+                      <span className="badge" style={{ backgroundColor: '#FFEDD5', color: '#C2410C', border: '1px solid #FDBA74', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                        🚒 Fire & Rescue
+                      </span>
+                    ) : r.organization_type === 'SHELTER' || (r.source && r.source.includes('Shelter')) ? (
+                      <span className="badge" style={{ backgroundColor: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                        🏠 Relief Shelter
+                      </span>
+                    ) : r.organization_type === 'ROAD' || (r.source && r.source.includes('Road')) ? (
+                      <span className="badge" style={{ backgroundColor: '#F3E8FF', color: '#6B21A8', border: '1px solid #D8B4FE', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                        🛣️ Road Department
                       </span>
                     ) : (
                       <span className="badge" style={{ backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>

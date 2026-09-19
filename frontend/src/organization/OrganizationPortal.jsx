@@ -54,13 +54,12 @@ export default function OrganizationPortal() {
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'incidents', label: 'Incidents', icon: AlertTriangle },
-    { id: 'assignments', label: 'Assignments', icon: ShieldCheck },
-    { id: 'resources', label: 'Resources', icon: Package },
-    { id: 'supply_chain', label: 'Supply Chain & Inventory', icon: Truck },
+    { id: 'resources', label: 'Resources Available', icon: Package },
+    { id: 'assignments', label: 'Allocation', icon: ShieldCheck },
+    { id: 'profile', label: 'Profile', icon: User },
     { id: 'alerts', label: 'Alerts', icon: Bell },
-    { id: 'updates', label: 'Operational Updates Log', icon: History },
-    { id: 'profile', label: 'Organization Profile', icon: User }
+    { id: 'incidents', label: 'Disaster Incidents', icon: AlertTriangle },
+    { id: 'supply_chain', label: 'Supply Chain & Inventory', icon: Truck }
   ];
 
   return (

@@ -109,13 +109,23 @@ export default function AllocateResourceModal({ emergency, resources = [], isOpe
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--blue-primary)', marginRight: '0.4rem' }}>
-                      #{idx + 1} MATCH
-                    </span>
-                    <strong style={{ fontSize: '0.85rem', color: 'var(--navy-deep)' }}>{cand.name}</strong>
-                    <span className="badge badge-navy" style={{ marginLeft: '0.5rem' }}>{cand.resource_type}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--blue-primary)' }}>
+                        #{idx + 1} MATCH
+                      </span>
+                      <strong style={{ fontSize: '0.85rem', color: 'var(--navy-deep)' }}>{cand.name}</strong>
+                      <span className="badge badge-navy" style={{ fontSize: '0.65rem' }}>{cand.resource_type}</span>
+                      <span style={{ fontSize: '0.65rem', backgroundColor: '#F1F5F9', color: '#475569', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>
+                        Source: {cand.source}
+                      </span>
+                    </div>
+                    {cand.match_reasons && cand.match_reasons.length > 0 && (
+                      <div style={{ fontSize: '0.7rem', color: '#16a34a', marginTop: '0.2rem', fontWeight: 600 }}>
+                        ✓ {cand.match_reasons[0]}
+                      </div>
+                    )}
                   </div>
-                  <div style={{ textAlign: 'right' }}>
+                  <div style={{ textAlign: 'right', minWidth: '100px' }}>
                     <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--blue-primary)' }}>{cand.match_score}% Match</div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-sub)' }}>ETA ~{cand.eta_minutes} mins</div>
                   </div>
