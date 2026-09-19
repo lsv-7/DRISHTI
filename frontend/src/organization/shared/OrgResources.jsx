@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import StatusBadge from '../../components/StatusBadge';
-import { fetchResources } from '../../services/api';
+import { fetchResources, createResource, updateResource } from '../../services/api';
 import { sendWebSocketEvent } from '../../services/websocket';
 import { Package, Plus, Edit3, CheckCircle2, X, Filter, ShieldCheck } from 'lucide-react';
 
@@ -72,18 +72,21 @@ export default function OrgResources({ orgData }) {
   const [formCapabilities, setFormCapabilities] = useState('FLOOD_WATER_RESCUE, MEDICAL_EVAC');
   const [notificationMsg, setNotificationMsg] = useState('');
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const fetched = await fetchResources();
-        if (fetched && fetched.length > 0) {
-          setResources(fetched);
-        }
-      } catch (err) {
-        console.warn("Using default resource state");
+  const loadData = async () => {
+    try {
+      const fetched = await fetchResources();
+      if (fetched && fetched.length > 0) {
+        setResources(fetched);
       }
+    } catch (err) {
+      console.warn("Using default resource state");
     }
+  };
+
+  useEffect(() => {
     loadData();
+    window.addEventListener('drishti_resource_updated', loadData);
+    return () => window.removeEventListener('drishti_resource_updated', loadData);
   }, []);
 
   const handleOpenAddModal = () => {
@@ -108,28 +111,22 @@ export default function OrgResources({ orgData }) {
     setIsModalOpen(true);
   };
 
-  const handleSaveResource = (e) => {
+  const handleSaveResource = async (e) => {
     e.preventDefault();
     const capArray = formCapabilities.split(',').map(c => c.trim()).filter(Boolean);
+    const orgName = orgData?.name || 'ORGANIZATION';
 
     if (editingResource) {
-      // Edit
-      const updatedList = resources.map(r => {
-        if (r.id === editingResource.id) {
-          return {
-            ...r,
-            name: formName,
-            resource_type: formType,
-            capacity: Number(formCapacity),
-            status: formStatus,
-            location: formLocation,
-            capabilities: capArray
-          };
-        }
-        return r;
+      // Edit resource via api.js persistence
+      await updateResource(editingResource.id, {
+        name: formName,
+        resource_type: formType,
+        capacity: Number(formCapacity),
+        status: formStatus,
+        location: formLocation,
+        capabilities: capArray
       });
-      setResources(updatedList);
-      setNotificationMsg(`Resource "${formName}" updated successfully!`);
+      setNotificationMsg(`Resource "${formName}" updated & synchronized with Command Center!`);
 
       // WebSocket broadcast
       sendWebSocketEvent("RESOURCE_UPDATED", {
@@ -140,29 +137,28 @@ export default function OrgResources({ orgData }) {
         timestamp: new Date().toISOString()
       });
     } else {
-      // Add
-      const newRes = {
-        id: `RES-${Math.floor(Math.random() * 900 + 100)}`,
+      // Add resource via api.js persistence
+      const newResObj = {
         name: formName,
         resource_type: formType,
         capacity: Number(formCapacity),
         current_load: 0,
         status: formStatus,
-        latitude: 16.506,
-        longitude: 80.648,
         location: formLocation,
-        capabilities: capArray
+        capabilities: capArray,
+        source: orgName
       };
-      setResources([newRes, ...resources]);
-      setNotificationMsg(`New resource "${formName}" added and broadcasted to Command Center!`);
+      await createResource(newResObj, orgName);
+      setNotificationMsg(`New resource "${formName}" added & broadcasted to Admin Command Center!`);
 
       sendWebSocketEvent("RESOURCE_ADDED", {
         event: "RESOURCE_ADDED",
-        resource: newRes,
+        resource: newResObj,
         timestamp: new Date().toISOString()
       });
     }
 
+    await loadData();
     setIsModalOpen(false);
     setTimeout(() => setNotificationMsg(''), 4000);
   };

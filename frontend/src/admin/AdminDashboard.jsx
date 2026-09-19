@@ -49,8 +49,12 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadAllData();
+    window.addEventListener('drishti_resource_updated', loadAllData);
     const interval = setInterval(loadAllData, 3000);
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener('drishti_resource_updated', loadAllData);
+      clearInterval(interval);
+    };
   }, []);
 
   // Compute metrics
