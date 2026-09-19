@@ -539,6 +539,85 @@ Date: 2026-09-19
 3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/` -> **5/5 PASSED in 0.05s**.
 4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 441ms**.
 
+---
+
+# T056 — Implement Sync API
+
+## Implementation Summary
+- **Dedicated Sync Service** (`flutter-frontend/lib/services/sync_service.dart`):
+  - Created `SyncService` providing client-to-backend synchronization for queued outbox operations.
+  - Defined strongly-typed `SyncStatus` classifications:
+    - `success`: Authoritative server response received and local SQLite entity reconciled.
+    - `duplicateAlreadySynced`: Idempotent match confirmed (HTTP 200) and reconciled locally without duplicating.
+    - `validationFailure`: HTTP 400/422 client validation error (marked non-retryable without payload fix).
+    - `transientFailure`: HTTP 5xx temporary server error (marked retryable).
+    - `networkFailure`: Timeout, socket disconnect, or transport drop (marked retryable).
+    - `permanentFailure`: Other HTTP errors (403, 404, etc. - marked non-retryable).
+  - Defined `SyncResult` model encapsulating `status`, `operationId`, `emergencyLocalId`, `idempotencyKey`, `serverEmergencyId`, `httpStatusCode`, `errorMessage`, `isRetryable`, and `authoritativeData`.
+  - Implemented `syncOperation(PendingOperationEntry, {http.Client? client})`:
+    1. Transitions queue operation state to `IN_FLIGHT` to prevent concurrent dispatch.
+    2. Strictly preserves the original `idempotencyKey` and immutable `vulnerability_snapshot`.
+    3. Strips local-only tracking fields (`status`, `sync_status`, `last_sync_error`, `id`) to conform with backend `EmergencyCreate` schema.
+    4. Executes HTTP POST to `$apiBase/emergencies` with bounded timeout (`Duration(seconds: 5)` default).
+    5. On HTTP 200/201: Reconciles local emergency record in SQLite with server ID, authoritative priority fields (`priority_score`, `priority_level`, `priority_reasons`), status, and `syncStatus = 'SYNCED'`. Marks queue operation `COMPLETED`.
+    6. On HTTP 400/422: Marks queue operation `FAILED`, records `lastSyncError` on emergency entity without deleting local emergency.
+    7. On HTTP 5xx: Marks queue operation `FAILED`, records error as retryable.
+    8. On `TimeoutException` or socket failure: Marks queue operation `FAILED`, prevents operation from remaining stuck in `IN_FLIGHT`, returns retryable `networkFailure`.
+  - Implemented `syncOperationById(int id)` and `syncAllPending()` preserving strict FIFO ordering (`createdAt ASC, id ASC`).
+- **OfflineService Integration** (`flutter-frontend/lib/services/offline_service.dart`):
+  - Injected `SyncService` into `OfflineService` constructor (`factory OfflineService({..., SyncService? syncService})`).
+  - Exposed `SyncService get syncService`.
+  - Refactored `syncPendingQueue({http.Client? client})` to delegate to `SyncService.syncOperation(...)`, maintaining 100% backward compatibility for all existing tests and UI widgets.
+- **Automated Test Suite** (`flutter-frontend/test/sync_service_test.dart`):
+  - 21 automated unit and integration tests verifying:
+    1. Successful emergency synchronization returning `SyncResult.success`.
+    2. Correct request payload structure matching backend schema.
+    3. Original idempotency key is strictly preserved across retries.
+    4. Successful response stores server emergency ID in SQLite.
+    5. Successful response updates priority fields in SQLite.
+    6. Queue operation transitions to `COMPLETED` after success.
+    7. HTTP 400 handling: non-retryable validation failure.
+    8. HTTP 422 handling: non-retryable validation failure.
+    9. HTTP 500 handling: retryable transient failure.
+    10. HTTP 503 handling: retryable service unavailable error.
+    11. Timeout handling: classifies failure as retryable and avoids stuck `IN_FLIGHT` state.
+    12. Network exception handling: `SocketException` classified as retryable.
+    13. Duplicate/idempotent response handling: server returns existing record and reconciles.
+    14. Local emergency remains in database after sync failure.
+    15. Vulnerability snapshot is completely unchanged after synchronization.
+    16. Original queued payload is not mutated in SQLite.
+    17. `IN_FLIGHT` operation does not remain stuck after timeout or crash.
+    18. `OfflineService` integration: `syncPendingQueue()` uses `SyncService` seamlessly.
+    19. Multiple queued emergencies preserve strict FIFO order during `syncAllPending`.
+    20. Successful sync of one operation does not delete or affect another.
+    21. Regression: Profile update from A to B does NOT alter snapshot of Emergency A when synchronized.
+
+### Files changed
+- `flutter-frontend/lib/services/sync_service.dart` (NEW)
+- `flutter-frontend/lib/services/offline_service.dart` (MODIFIED)
+- `flutter-frontend/test/sync_service_test.dart` (NEW)
+- `.antigravity/tasks/Tasks.MD` (MODIFIED)
+
+---
+
+## Verification Summary
+
+1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 2.8s)**.
+2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **124/124 tests PASSED** across all 11 test suites:
+   - `test/sync_service_test.dart` (21/21 PASSED)
+   - `test/connectivity_service_test.dart` (13/13 PASSED)
+   - `test/pending_operation_queue_test.dart` (14/14 PASSED)
+   - `test/local_emergency_repository_test.dart` (14/14 PASSED)
+   - `test/database_test.dart` (10/10 PASSED)
+   - `test/validation_and_error_states_test.dart` (12/12 PASSED)
+   - `test/emergency_tracking_test.dart` (11/11 PASSED)
+   - `test/location_capture_test.dart` (14/14 PASSED)
+   - `test/emergency_reporting_test.dart` (7/7 PASSED)
+   - `test/emergency_snapshot_test.dart` (4/4 PASSED)
+   - `test/vulnerability_profile_test.dart` (4/4 PASSED)
+3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/` -> **5/5 PASSED in 0.06s**.
+4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 316ms**.
+
 
 
 

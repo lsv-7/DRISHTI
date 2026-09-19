@@ -4,11 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import '../database/app_database.dart';
 import '../models/vulnerability_profile.dart';
 import '../models/emergency_tracking.dart';
 import '../repositories/local_emergency_repository.dart';
 import 'connectivity_service.dart';
 import 'pending_operation_queue.dart';
+import 'sync_service.dart';
 
 export 'connectivity_service.dart' show ConnectivityState;
 
@@ -18,6 +20,7 @@ class OfflineService extends ChangeNotifier {
   final LocalEmergencyRepository _repository;
   final PendingOperationQueue _queue;
   final ConnectivityService _connectivityService;
+  final SyncService _syncService;
   StreamSubscription<ConnectivityState>? _connectivitySubscription;
 
   ConnectivityState _connectivity = ConnectivityState.online;
@@ -31,6 +34,7 @@ class OfflineService extends ChangeNotifier {
   LocalEmergencyRepository get repository => _repository;
   PendingOperationQueue get queue => _queue;
   ConnectivityService get connectivityService => _connectivityService;
+  SyncService get syncService => _syncService;
   ConnectivityState get connectivity => _connectivity;
   ConnectivityState get connectivityState => _connectivity;
   List<Map<String, dynamic>> get localQueue => _localQueue;
@@ -57,17 +61,31 @@ class OfflineService extends ChangeNotifier {
     LocalEmergencyRepository? repository,
     PendingOperationQueue? queue,
     ConnectivityService? connectivityService,
+    SyncService? syncService,
   }) {
     final repo = repository ?? LocalEmergencyRepository();
     final q = queue ?? PendingOperationQueue(repo.database);
     final cs = connectivityService ?? ConnectivityService(autoInitialize: true);
-    return OfflineService._(repo, q, cs);
+    final ss = syncService ?? SyncService(repository: repo, queue: q);
+    return OfflineService._(repo, q, cs, ss);
   }
 
-  OfflineService._(this._repository, this._queue, this._connectivityService) {
+  OfflineService._(
+    this._repository,
+    this._queue,
+    this._connectivityService,
+    this._syncService,
+  ) {
     _connectivity = _connectivityService.state;
     _connectivitySubscription =
         _connectivityService.onConnectivityChanged.listen((state) {
+      if (_connectivityService.manualOverride != null) {
+        if (_connectivity != _connectivityService.manualOverride!) {
+          _connectivity = _connectivityService.manualOverride!;
+          notifyListeners();
+        }
+        return;
+      }
       if (_connectivity != state) {
         _connectivity = state;
         notifyListeners();
@@ -336,7 +354,7 @@ class OfflineService extends ChangeNotifier {
     }
   }
 
-  /// Synchronizes pending queued emergencies using their ORIGINAL stored vulnerability snapshots.
+  /// Synchronizes pending queued emergencies using their ORIGINAL stored vulnerability snapshots via [SyncService].
   Future<void> syncPendingQueue({http.Client? client}) async {
     if (_localQueue.isEmpty) return;
 
@@ -346,48 +364,37 @@ class OfflineService extends ChangeNotifier {
 
     try {
       for (var item in List<Map<String, dynamic>>.from(_localQueue)) {
-        try {
-          final res = await httpClient.post(
-            Uri.parse("$apiBase/emergencies"),
-            headers: {"Content-Type": "application/json"},
-            body: jsonEncode(item), // Retains original vulnerability_snapshot inside item
-          ).timeout(const Duration(seconds: 5));
+        final key = item["idempotency_key"] as String?;
+        PendingOperationEntry? op;
+        if (key != null) {
+          op = await _queue.getOperationByIdempotencyKey(key);
+        }
 
-          if (res.statusCode == 200 || res.statusCode == 201) {
-            final syncedData = jsonDecode(res.body) as Map<String, dynamic>;
-            syncedData["sync_status"] = "SYNCED";
-            syncedData["idempotency_key"] ??= item["idempotency_key"];
-            await _repository.saveEmergencyMap(syncedData);
-            final key = item["idempotency_key"] as String?;
-            if (key != null) {
-              final op = await _queue.getOperationByIdempotencyKey(key);
-              if (op != null) {
-                await _queue.markCompleted(op.id);
-              }
-            }
-          } else {
-            item["last_sync_error"] = "Status ${res.statusCode}";
-            remaining.add(item);
-            latestError = "Server rejected item (status ${res.statusCode})";
-            final key = item["idempotency_key"] as String?;
-            if (key != null) {
-              final op = await _queue.getOperationByIdempotencyKey(key);
-              if (op != null) {
-                await _queue.markFailed(op.id, latestError);
-              }
-            }
+        op ??= PendingOperationEntry(
+          id: 0,
+          operationType: 'CREATE_EMERGENCY',
+          idempotencyKey: key ?? 'unknown',
+          payload: jsonEncode(item),
+          status: 'PENDING',
+          attemptCount: 0,
+          createdAt: DateTime.now(),
+        );
+
+        final result =
+            await _syncService.syncOperation(op, client: httpClient);
+
+        if (result.isSuccess) {
+          if (_activeEmergency != null &&
+              _activeEmergency!['idempotency_key'] == key) {
+            _activeEmergency =
+                Map<String, dynamic>.from(result.authoritativeData ?? item)
+                  ..['sync_status'] = 'SYNCED';
+            await _saveActiveEmergencyLocally();
           }
-        } catch (e) {
-          item["last_sync_error"] = e.toString();
+        } else {
+          item["last_sync_error"] = result.errorMessage;
           remaining.add(item);
-          latestError = "Network error: $e";
-          final key = item["idempotency_key"] as String?;
-          if (key != null) {
-            final op = await _queue.getOperationByIdempotencyKey(key);
-            if (op != null) {
-              await _queue.markFailed(op.id, e.toString());
-            }
-          }
+          latestError = result.errorMessage;
         }
       }
     } finally {

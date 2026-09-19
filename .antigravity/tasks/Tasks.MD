@@ -90,7 +90,7 @@
 - [x] T053 Create local emergency repository.
 - [x] T054 Create pending-operation queue.
 - [x] T055 Implement connectivity state detection.
-- [ ] T056 Implement sync API.
+- [x] T056 Implement sync API.
 - [ ] T057 Implement idempotent synchronization.
 - [ ] T058 Implement retry/backoff.
 - [ ] T059 Show local pending/sync status in Flutter.
