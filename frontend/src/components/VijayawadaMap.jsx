@@ -37,6 +37,21 @@ const hospitalIcon = new L.Icon({
   popupAnchor: [1, -34],
 });
 
+const loraIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+});
+
+const loraNodes = [
+  { id: "LORA-NODE-01", name: "Node-Alpha (Prakasam Gateway)", lat: 16.5062, lon: 80.6480, freq: "868.1 MHz", rssi: -85, status: "ONLINE" },
+  { id: "LORA-NODE-02", name: "Node-Beta (Auto Nagar Relay)", lat: 16.5120, lon: 80.6600, freq: "868.3 MHz", rssi: -102, status: "ONLINE" },
+  { id: "LORA-NODE-03", name: "Node-Gamma (Benz Circle Node)", lat: 16.5000, lon: 80.6550, freq: "868.5 MHz", rssi: -94, status: "ONLINE" },
+  { id: "LORA-NODE-04", name: "Node-Delta (Kothapeta Mobile Mesh)", lat: 16.5180, lon: 80.6320, freq: "868.1 MHz", rssi: -112, status: "LIMITED" }
+];
+
 export default function VijayawadaMap({
   emergencies = [],
   resources = [],
@@ -58,7 +73,8 @@ export default function VijayawadaMap({
     evacuation: true,
     blockedRoads: true,
     missingSearch: true,
-    populationZones: true
+    populationZones: true,
+    loraMesh: true
   });
   const [showLayerControl, setShowLayerControl] = useState(false);
 
@@ -133,7 +149,8 @@ export default function VijayawadaMap({
               { key: 'evacuation', label: '9. Evacuation Routes' },
               { key: 'blockedRoads', label: '10. Blocked Roads (R12)' },
               { key: 'missingSearch', label: '11. Missing Search Areas' },
-              { key: 'populationZones', label: '12. Population Zones' }
+              { key: 'populationZones', label: '12. Population Zones' },
+              { key: 'loraMesh', label: '13. LoRa Radio Mesh Nodes (868MHz)' }
             ].map((item) => (
               <label key={item.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: '#f8fafc', cursor: 'pointer' }}>
                 <input
@@ -286,6 +303,25 @@ export default function VijayawadaMap({
             </Popup>
           </Marker>
         ))}
+
+        {/* Layer 13: LoRa Mesh Gateway Nodes */}
+        {layers.loraMesh && loraNodes.map((node) => (
+          <Marker
+            key={node.id}
+            position={[node.lat, node.lon]}
+            icon={loraIcon}
+          >
+            <Popup>
+              <div style={{ color: '#0f172a' }}>
+                <strong style={{ color: '#f97316' }}>📡 {node.name}</strong>
+                <br />
+                Freq: {node.freq} • RSSI: {node.rssi} dBm
+                <br />
+                Mesh Radio Status: <strong>{node.status}</strong>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
       </MapContainer>
 
       {/* Map Legend Overlay */}
@@ -303,12 +339,14 @@ export default function VijayawadaMap({
         color: '#f8fafc',
         display: 'flex',
         gap: '1rem',
-        alignItems: 'center'
+        alignItems: 'center',
+        flexWrap: 'wrap'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 10, height: 10, background: '#ef4444', borderRadius: '50%' }}></span> Emergency</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 10, height: 10, background: '#3b82f6', borderRadius: '50%' }}></span> Responder</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 10, height: 10, background: '#10b981', borderRadius: '50%' }}></span> Shelter</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 10, height: 10, background: '#8b5cf6', borderRadius: '50%' }}></span> Hospital</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 10, height: 10, background: '#f97316', borderRadius: '50%' }}></span> LoRa 868MHz Node</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 12, height: 3, background: '#10b981' }}></span> Evacuation Corridor</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 12, height: 3, background: '#ef4444', borderStyle: 'dashed' }}></span> Blocked Road R12</div>
       </div>

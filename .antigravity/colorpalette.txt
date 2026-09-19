@@ -1,0 +1,51 @@
+Recommended Web Design Palette
+
+1. Primary / Brand
+
+#0B1F3A — Deep Navy → header, navigation, major headings
+#1565D8 — Primary Blue → buttons, active navigation, links
+#EAF2FF — Light Blue → selected cards, backgrounds
+
+2. General UI
+
+#F7F9FC — Page background
+#FFFFFF — Cards and panels
+#172033 — Main text
+#526173 — Secondary text
+#D9E2EC — Borders/dividers
+
+3. Emergency Status
+
+#D71920 — Critical
+#F97316 — High / Evacuation
+#F4B400 — Warning
+#16A34A — Safe / Available
+
+4. Disaster Map
+
+#0284C7 — River
+#0EA5E9 — Flood/inundation
+#075985 — Deep water
+#D71920 — Breach/danger zone
+💡 Important Web-Design Rule
+
+Don't make the whole website colorful.
+
+Use roughly:
+
+70% → White / light neutral
+20% → Blue / navy
+10% → Red, orange, yellow, green for status
+
+For example:
+
+Background       → #F7F9FC
+Cards             → #FFFFFF
+Navigation        → #0B1F3A
+Primary Buttons   → #1565D8
+
+Critical          → #D71920
+High              → #F97316
+Warning           → #F4B400
+Safe              → #16A34A
+

@@ -1,0 +1,562 @@
+In the web dashboard:
+	Authentication using firebase using credentials
+	Change the UI according to color palette
+	Now divide the web interface into two parts admin,organisation
+	Admin functionalities are already mentioned keep them as it.
+	After authentication, determine:
+
+user.role
+user.organization_id
+user.organization_type
+
+Possible application roles:
+
+ADMIN
+ORGANIZATION_ADMIN
+ORGANIZATION_OPERATOR
+
+Organization types:
+
+HOSPITAL
+POLICE
+FIRE
+SHELTER
+ROAD
+
+Authorization rules:
+
+ADMIN:
+- Can view all organizations.
+- Can view all emergencies.
+- Can view all resources.
+- Can view and coordinate all assignments.
+- Can modify/approve system-wide operational data where authorized.
+- Can manage organizations and organization users.
+- Can access simulations and system analytics.
+
+ORGANIZATION_ADMIN:
+- Can manage their organization's operational data.
+- Can manage their organization's resources/personnel where authorized.
+- Can see assignments involving their organization.
+- Can report incidents and operational changes.
+- Cannot modify another organization's data.
+- Cannot change system-wide policies unless explicitly authorized.
+
+ORGANIZATION_OPERATOR:
+- Can update operational status.
+- Can acknowledge assignments.
+- Can report field observations/incidents.
+- Can update assigned resources.
+- Cannot manage organization users or organization configuration.
+
+Never rely only on frontend route protection.
+The backend must enforce authorization as well.
+
+============================================================
+ADMIN PORTAL
+============================================================
+
+Create an Admin layout with:
+
+Sidebar:
+
+Dashboard
+Live Map
+Emergencies
+Organizations
+Resources
+Rescue Teams
+Assignments
+Replanning
+Population
+Missing Persons
+Policies
+What-If Simulation
+Notifications
+Reports
+Audit Logs
+
+Top bar:
+
+- Disaster status
+- Current zone
+- Connectivity status
+- Notifications
+- Logged-in admin
+- Current timestamp
+
+============================================================
+ADMIN DASHBOARD
+============================================================
+
+Display real-time operational information.
+
+Cards:
+
+Active Emergencies
+Critical Emergencies
+Active Rescue Operations
+Available Resources
+Unavailable Resources
+Hospitals With Capacity
+Shelters Near Capacity
+Blocked Roads
+Potential Missing-Person Investigations
+
+Map:
+
+Show:
+
+- Emergencies
+- Hospitals
+- Police stations
+- Fire stations
+- Shelters
+- Roads
+- Blocked roads
+- Rescue teams
+- Disaster zones
+- Active assignments
+
+Use existing Leaflet/OSM implementation.
+
+Do NOT replace existing map functionality unless necessary.
+
+============================================================
+ADMIN → ORGANIZATIONS
+============================================================
+
+Create an organization management page.
+
+Organization table:
+
+Name
+Organization Type
+Location
+Operational Status
+Available Resources
+Active Assignments
+Last Updated
+Verification Status
+
+Organization types:
+
+HOSPITAL
+POLICE
+FIRE
+SHELTER
+ROAD
+
+Actions:
+
+View
+Edit
+Activate/Deactivate
+View Resources
+View Assignments
+View Operational History
+
+Organization details page:
+
+Organization information
+Location
+Contact information
+Capabilities
+Resources
+Personnel/teams
+Current operational status
+Current assignments
+Recent updates
+Audit history
+
+============================================================
+ORGANIZATION PORTAL
+============================================================
+
+Create ONE reusable Organization Portal.
+
+Do NOT create:
+
+HospitalApp
+PoliceApp
+FireApp
+ShelterApp
+RoadApp
+
+Instead create:
+
+OrganizationPortal
+
+and render the appropriate UI based on:
+
+organization.type
+
+Example:
+
+if organization.type === "HOSPITAL"
+    render HospitalDashboard
+
+if organization.type === "POLICE"
+    render PoliceDashboard
+
+if organization.type === "FIRE"
+    render FireDashboard
+
+if organization.type === "SHELTER"
+    render ShelterDashboard
+
+if organization.type === "ROAD"
+    render RoadDashboard
+
+Shared organization pages:
+
+Dashboard
+Incidents
+Assignments
+Resources
+Alerts
+Operational Updates
+Profile
+
+============================================================
+COMMON ORGANIZATION DASHBOARD
+============================================================
+
+Every organization should see:
+
+Organization Name
+Organization Type
+Operational Status
+Current Disaster Zone
+Active Assignments
+Pending Requests
+Critical Alerts
+Available Resources
+Recent Updates
+Last Synchronization
+
+Provide a prominent status control:
+
+OPERATIONAL
+LIMITED
+OVERLOADED
+UNAVAILABLE
+OFFLINE
+
+Every status change must record:
+
+organization_id
+previous_status
+new_status
+updated_by
+timestamp
+reason
+
+============================================================
+HOSPITAL PORTAL
+============================================================
+
+Hospital dashboard should contain:
+
+Emergency Status
+
+Beds:
+- Total beds
+- Occupied beds
+- Available beds
+
+Emergency Beds:
+- Total
+- Available
+
+ICU:
+- Total
+- Available
+
+Medical Teams:
+- Available
+- Busy
+- Unavailable
+
+Ambulances:
+- Available
+- Deployed
+- Unavailable
+
+Capabilities:
+- Emergency
+- ICU
+- Trauma
+- Surgery
+- Pediatric care
+- Other existing configured capabilities
+
+Operational actions:
+
+Update Capacity
+Update ICU
+Update Ambulance Availability
+Update Medical Team Availability
+Report Hospital Incident
+Acknowledge Patient Transfer
+Update Hospital Status
+
+Do not invent medical capabilities that are not represented by the
+existing backend/data model.
+
+============================================================
+POLICE PORTAL
+============================================================
+
+Police dashboard should contain:
+
+Operational Status
+
+Available personnel
+Deployed personnel
+Available patrol units
+Active incidents
+Checkpoints
+Restricted areas
+Traffic/road observations
+
+Actions:
+
+Report Incident
+Report Road Restriction
+Report Unsafe Area
+Update Patrol Availability
+Acknowledge Assignment
+Update Incident
+Mark Incident Resolved
+
+Police should be able to submit verified field observations such as:
+
+ROAD_BLOCKED
+AREA_RESTRICTED
+TRAFFIC_DISRUPTION
+SECURITY_INCIDENT
+EVACUATION_SUPPORT_REQUIRED
+
+Use the existing observation/event model where possible.
+
+============================================================
+FIRE PORTAL
+============================================================
+
+Fire dashboard should contain:
+
+Operational Status
+
+Available teams
+Deployed teams
+Fire engines
+Rescue vehicles
+Water rescue teams
+Special equipment
+
+Team status:
+
+AVAILABLE
+BUSY
+UNAVAILABLE
+OFFLINE
+
+Display active assignments.
+
+Fire organization should be able to:
+
+Acknowledge assignment
+Accept assignment
+Reject assignment with reason
+Mark EN_ROUTE
+Mark ARRIVED
+Mark IN_PROGRESS
+Report field observation
+Request additional resources
+Mark mission COMPLETED
+
+Possible field observations:
+
+FIRE_SPREAD
+PERSON_TRAPPED
+ROAD_BLOCKED
+BUILDING_DAMAGED
+WATER_RESCUE_REQUIRED
+ADDITIONAL_TEAM_REQUIRED
+EQUIPMENT_FAILURE
+
+============================================================
+SHELTER PORTAL
+============================================================
+
+Shelter dashboard should contain:
+
+Total Capacity
+Current Occupancy
+Available Capacity
+Accessibility Capacity
+Medical Support
+Food Status
+Water Status
+Shelter Status
+
+Statuses:
+
+OPEN
+NEAR_CAPACITY
+FULL
+TEMPORARILY_CLOSED
+EVACUATION_REQUIRED
+
+Actions:
+
+Update Occupancy
+Register Person
+Transfer Person
+Discharge Person
+Update Food Status
+Update Water Status
+Report Shelter Issue
+Update Accessibility
+Update Shelter Status
+
+Display:
+
+Recent registrations
+Transfers
+Current capacity trend
+Incoming evacuation requests
+
+Do not expose unnecessary sensitive personal information.
+
+============================================================
+ROAD PORTAL
+============================================================
+
+Road should be treated as an infrastructure/traffic organization.
+
+Dashboard:
+
+Critical Roads
+Blocked Roads
+Partially Blocked Roads
+Restricted Roads
+Recently Updated Roads
+Active Road Incidents
+
+Road statuses:
+
+OPEN
+PARTIALLY_BLOCKED
+BLOCKED
+RESTRICTED
+UNKNOWN
+
+Road detail:
+
+Road ID
+Road Name
+Location
+Current Status
+Reason
+Reported By
+Source Type
+Verification Status
+Last Updated
+Affected Zones
+Affected Assignments
+
+Actions:
+
+Report Blockage
+Update Road Status
+Verify Road Report
+Report Debris
+Report Flooding
+Report Bridge/Infrastructure Issue
+Mark Road Reopened
+
+Every road update must trigger the existing event/replanning pipeline
+where applicable.
+
+For example:
+
+ROAD_STATUS_CHANGED
+    ↓
+Affected Assignments
+    ↓
+Routing Engine
+    ↓
+Alternative Route
+    ↓
+Replanning Recommendation
+    ↓
+Human Approval
+    ↓
+Updated Assignment
+
+
+IMPORTANT SAFETY / DATA RULES
+Do not invent legal policies.
+Do not claim live government integrations unless implemented.
+Do not claim live hospital capacity unless actually connected to a
+hospital system.
+Demo data must be clearly seed/simulated data.
+Preserve source/provenance for operational observations.
+Use verification status for reports:
+UNVERIFIED
+PARTIALLY_VERIFIED
+VERIFIED
+REJECTED
+CONFLICTING
+Do not expose unnecessary personal/medical information.
+Do not allow an LLM to directly modify operational state.
+Deterministic backend services must handle resource matching,
+routing, capacity calculations and validation.
+Consequential operations require the existing human approval workflow.
+============================================================
+IMPLEMENTATION STRATEGY
+
+Do not implement everything at once.
+
+First:
+
+Inspect current application.
+Identify existing authentication.
+Identify existing routes.
+Identify existing layouts/sidebar components.
+Identify existing API service layer.
+Identify existing organization/resource models.
+Identify existing map/dashboard components.
+
+Then implement in this order:
+
+PHASE 1
+
+Role-based routing
+Admin layout
+Organization layout
+
+PHASE 2
+
+Admin dashboard
+Organization dashboard
+
+PHASE 3
+
+Organization management
+Hospital portal
+Police portal
+Fire portal
+Shelter portal
+Road portal
+
+PHASE 4
+
+Organization operational updates
+Assignments
+Notifications
+WebSocket updates
+
+
