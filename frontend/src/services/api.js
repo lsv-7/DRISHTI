@@ -420,7 +420,22 @@ const CUSTOM_RESOURCES_KEY = "drishti_custom_resources";
 export function getStoredCustomResources() {
   try {
     const raw = localStorage.getItem(CUSTOM_RESOURCES_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list)) return [];
+
+    // Deduplicate entries by normalized name + type
+    const uniqueList = [];
+    const seenKeys = new Set();
+    list.forEach(r => {
+      if (!r || !r.name) return;
+      const key = `${String(r.name).trim().toLowerCase()}_${String(r.resource_type || '').trim().toLowerCase()}`;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        uniqueList.push(r);
+      }
+    });
+    return uniqueList;
   } catch (e) {
     return [];
   }
@@ -429,7 +444,8 @@ export function getStoredCustomResources() {
 export function saveCustomResource(resourceObj) {
   try {
     const existing = getStoredCustomResources();
-    const idx = existing.findIndex(r => r.id === resourceObj.id);
+    const resKey = `${String(resourceObj.name || '').trim().toLowerCase()}_${String(resourceObj.resource_type || '').trim().toLowerCase()}`;
+    const idx = existing.findIndex(r => r.id === resourceObj.id || `${String(r.name || '').trim().toLowerCase()}_${String(r.resource_type || '').trim().toLowerCase()}` === resKey);
     let updated;
     if (idx >= 0) {
       updated = [...existing];
@@ -464,11 +480,33 @@ export async function fetchResources() {
     console.warn("fetchResources fallback to merged seed dataset:", err);
   }
 
-  const map = new Map();
-  baseResources.forEach(r => map.set(r.id, r));
-  custom.forEach(r => map.set(r.id, { ...map.get(r.id), ...r }));
+  // Deduplicate baseResources and custom entries by ID & Name+Type Key
+  const list = [];
+  const seenIds = new Set();
+  const seenKeys = new Set();
 
-  return Array.from(map.values());
+  const addUnique = (r) => {
+    if (!r || !r.name) return;
+    const idKey = String(r.id);
+    const nameTypeKey = `${String(r.name).trim().toLowerCase()}_${String(r.resource_type || '').trim().toLowerCase()}`;
+
+    if (!seenIds.has(idKey) && !seenKeys.has(nameTypeKey)) {
+      seenIds.add(idKey);
+      seenKeys.add(nameTypeKey);
+      list.push(r);
+    } else if (seenKeys.has(nameTypeKey)) {
+      // Merge properties if match already found by name/type
+      const existingIdx = list.findIndex(item => `${String(item.name).trim().toLowerCase()}_${String(item.resource_type || '').trim().toLowerCase()}` === nameTypeKey);
+      if (existingIdx >= 0) {
+        list[existingIdx] = { ...list[existingIdx], ...r };
+      }
+    }
+  };
+
+  baseResources.forEach(addUnique);
+  custom.forEach(addUnique);
+
+  return list;
 }
 
 export async function createResource(resourceData, origin = 'ORGANIZATION') {
@@ -490,18 +528,25 @@ export async function createResource(resourceData, origin = 'ORGANIZATION') {
     submitted_at: new Date().toISOString()
   };
 
+  let savedObj = formattedResource;
   try {
-    await fetch(`${API_BASE}/resources`, {
+    const res = await fetch(`${API_BASE}/resources`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(formattedResource)
     });
+    if (res.ok) {
+      const serverData = await res.json();
+      if (serverData && (serverData.id || serverData._id)) {
+        savedObj = { ...formattedResource, ...serverData };
+      }
+    }
   } catch (err) {
     console.warn("Backend POST /resources offline, persisted in local storage:", err);
   }
 
-  saveCustomResource(formattedResource);
-  return formattedResource;
+  saveCustomResource(savedObj);
+  return savedObj;
 }
 
 export async function updateResource(resourceId, updates) {
