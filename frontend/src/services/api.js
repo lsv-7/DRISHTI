@@ -409,6 +409,7 @@ function mergeWithDefaults(incoming, defaults, keyField = 'id') {
       result.push(def);
     }
   });
+  result.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
   return result;
 }
 

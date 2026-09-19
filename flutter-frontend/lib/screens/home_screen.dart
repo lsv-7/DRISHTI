@@ -87,6 +87,11 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           IconButton(
+            icon: const Icon(Icons.dns_outlined, color: DrishtiColors.primaryBlue),
+            tooltip: "Server Configuration",
+            onPressed: () => _showServerConfigModal(context, offlineService),
+          ),
+          IconButton(
             icon: const Icon(Icons.account_circle_outlined, color: DrishtiColors.primaryBlue),
             tooltip: "Edit Profile",
             onPressed: () {
@@ -498,13 +503,59 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 8),
             // Preserved exact search string for automated tests
-            Text(
-              "Offline Sync Queue: $queueCount Pending",
-              style: const TextStyle(
-                color: DrishtiColors.deepNavy,
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Offline Sync Queue: $queueCount Pending",
+                  style: const TextStyle(
+                    color: DrishtiColors.deepNavy,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+                if (queueCount > 0)
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: DrishtiColors.primaryBlue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      minimumSize: const Size(75, 32),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    ),
+                    onPressed: service.isSyncing
+                        ? null
+                        : () async {
+                            final results = await service.syncPendingQueue(force: true);
+                            if (context.mounted) {
+                              final successCount = results.where((r) => r.isSuccess).length;
+                              if (successCount > 0) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: DrishtiColors.successGreen,
+                                    content: Text("Successfully synced $successCount report(s) with command center."),
+                                  ),
+                                );
+                              } else if (results.isNotEmpty) {
+                                final firstErr = results.first.errorMessage ?? "Network connection failed";
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: DrishtiColors.emergencyRed,
+                                    content: Text("Sync failed: $firstErr. Check server host (${service.currentApiBase})."),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                    child: service.isSyncing
+                        ? const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text("Sync Now", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+              ],
             ),
           ],
         ),
@@ -598,10 +649,44 @@ class _HomeScreenState extends State<HomeScreen> {
                 minimumSize: const Size(80, 36),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              onPressed: connectivity == ConnectivityState.online
-                  ? () => service.syncPendingQueue()
-                  : null,
-              child: const Text("Sync Now", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              onPressed: service.isSyncing
+                  ? null
+                  : () async {
+                      final results = await service.syncPendingQueue(force: true);
+                      if (context.mounted) {
+                        final successCount = results.where((r) => r.isSuccess).length;
+                        if (successCount > 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: DrishtiColors.successGreen,
+                              content: Text("Successfully synced $successCount report(s) with command center."),
+                            ),
+                          );
+                        } else if (results.isNotEmpty) {
+                          final firstErr = results.first.errorMessage ?? "Network connection failed";
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: DrishtiColors.emergencyRed,
+                              content: Text("Sync failed: $firstErr. Check server host (${service.currentApiBase})."),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              backgroundColor: DrishtiColors.primaryBlue,
+                              content: Text("No pending reports to sync."),
+                            ),
+                          );
+                        }
+                      }
+                    },
+              child: service.isSyncing
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text("Sync Now", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
             ),
           ],
         ],
@@ -1229,6 +1314,122 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showServerConfigModal(BuildContext context, OfflineService service) {
+    final controller = TextEditingController(text: service.currentApiBase);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Backend Server Host",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: DrishtiColors.deepNavy,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  "Configure FastAPI backend endpoint URL for real-time mobile sync.",
+                  style: TextStyle(fontSize: 12, color: DrishtiColors.secondaryText),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    labelText: "API Base URL",
+                    hintText: "http://localhost:3000/api/v1",
+                    prefixIcon: const Icon(Icons.link, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  "Quick Presets:",
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: DrishtiColors.deepNavy),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ActionChip(
+                      label: const Text("USB ADB (localhost:3000)", style: TextStyle(fontSize: 11)),
+                      onPressed: () => setModalState(() => controller.text = "http://localhost:3000/api/v1"),
+                    ),
+                    ActionChip(
+                      label: const Text("Emulator (10.0.2.2:3000)", style: TextStyle(fontSize: 11)),
+                      onPressed: () => setModalState(() => controller.text = "http://10.0.2.2:3000/api/v1"),
+                    ),
+                    ActionChip(
+                      label: const Text("LAN Wi-Fi (10.1.42.213:3000)", style: TextStyle(fontSize: 11)),
+                      onPressed: () => setModalState(() => controller.text = "http://10.1.42.213:3000/api/v1"),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: DrishtiColors.primaryBlue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: const Icon(Icons.check_circle_outline, size: 18),
+                    label: const Text("Save & Reconnect", style: TextStyle(fontWeight: FontWeight.bold)),
+                    onPressed: () async {
+                      final newBase = controller.text.trim();
+                      if (newBase.isNotEmpty) {
+                        await service.updateApiBase(newBase);
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: DrishtiColors.successGreen,
+                              content: Text("Updated server URL to: ${service.currentApiBase}"),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

@@ -2,23 +2,36 @@ import React, { useState, useEffect } from 'react';
 import { fetchEmergencies, fetchResources, DEFAULT_EMERGENCIES, DEFAULT_RESOURCES } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import AllocateResourceModal from '../components/AllocateResourceModal';
-import { AlertTriangle, Plus, Search, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Plus, Search, ShieldCheck, RefreshCw } from 'lucide-react';
 
 export default function EmergenciesAdmin() {
   const [emergencies, setEmergencies] = useState(DEFAULT_EMERGENCIES);
   const [resources, setResources] = useState(DEFAULT_RESOURCES);
   const [selectedEmergency, setSelectedEmergency] = useState(null);
   const [isAllocateOpen, setIsAllocateOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadData = async () => {
-    const [eData, rData] = await Promise.all([fetchEmergencies(), fetchResources()]);
-    setEmergencies((eData && eData.length > 0) ? eData : DEFAULT_EMERGENCIES);
-    setResources((rData && rData.length > 0) ? rData : DEFAULT_RESOURCES);
+    try {
+      const [eData, rData] = await Promise.all([fetchEmergencies(), fetchResources()]);
+      setEmergencies((eData && eData.length > 0) ? eData : DEFAULT_EMERGENCIES);
+      setResources((rData && rData.length > 0) ? rData : DEFAULT_RESOURCES);
+    } catch (err) {
+      console.warn("Error refreshing emergencies:", err);
+    }
   };
 
   useEffect(() => {
     loadData();
+    const interval = setInterval(loadData, 3000);
+    return () => clearInterval(interval);
   }, []);
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await loadData();
+    setTimeout(() => setIsRefreshing(false), 400);
+  };
 
   const handleOpenAllocate = (emergency) => {
     setSelectedEmergency(emergency);
@@ -27,7 +40,7 @@ export default function EmergenciesAdmin() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--navy-deep)', margin: 0 }}>
             EMERGENCY INCIDENTS & VULNERABILITY PRIORITY ENGINE
@@ -35,6 +48,16 @@ export default function EmergenciesAdmin() {
           <p style={{ fontSize: '0.85rem', color: 'var(--text-sub)', margin: '0.2rem 0 0 0' }}>
             Vulnerability-Adjusted Priority Scoring System & Resource Dispatch
           </p>
+        </div>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button
+            className="btn-secondary"
+            onClick={handleManualRefresh}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}
+          >
+            <RefreshCw size={14} style={{ animation: isRefreshing ? 'spin 1s linear infinite' : 'none' }} />
+            Refresh Feeds
+          </button>
         </div>
       </div>
 

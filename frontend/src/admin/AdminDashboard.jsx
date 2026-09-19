@@ -49,7 +49,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadAllData();
-    const interval = setInterval(loadAllData, 10000);
+    const interval = setInterval(loadAllData, 3000);
     return () => clearInterval(interval);
   }, []);
 

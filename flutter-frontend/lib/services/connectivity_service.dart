@@ -79,7 +79,7 @@ class MockConnectivityAdapter implements ConnectivityAdapter {
 class ConnectivityService {
   final ConnectivityAdapter _adapter;
   final ReachabilityProbe? _reachabilityProbe;
-  final String _healthEndpoint;
+  String _healthEndpoint;
 
   ConnectivityState _state;
   ConnectivityState? _manualOverride;

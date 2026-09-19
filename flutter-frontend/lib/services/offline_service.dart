@@ -16,6 +16,7 @@ export 'connectivity_service.dart' show ConnectivityState;
 
 class OfflineService extends ChangeNotifier {
   static const String apiBase = "http://localhost:3000/api/v1";
+  String _apiBase = apiBase;
   
   final LocalEmergencyRepository _repository;
   final PendingOperationQueue _queue;
@@ -54,6 +55,29 @@ class OfflineService extends ChangeNotifier {
   bool get isSyncing => _isSyncing;
   bool get isDisposed => _isDisposed;
   Future<void>? get currentSyncFuture => _currentSyncFuture;
+  String get currentApiBase => _apiBase;
+
+  /// Updates the server backend base URL dynamically (e.g. for USB ADB vs Wi-Fi LAN)
+  Future<void> updateApiBase(String newBase) async {
+    var cleanBase = newBase.trim();
+    if (cleanBase.endsWith('/')) {
+      cleanBase = cleanBase.substring(0, cleanBase.length - 1);
+    }
+    if (!cleanBase.endsWith('/api/v1')) {
+      if (cleanBase.endsWith('/api')) {
+        cleanBase = '$cleanBase/v1';
+      } else {
+        cleanBase = '$cleanBase/api/v1';
+      }
+    }
+    _apiBase = cleanBase;
+    _syncService.setApiBase(_apiBase);
+    _connectivityService.setHealthEndpoint('$_apiBase/health');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('server_api_base', _apiBase);
+    await _connectivityService.checkConnectivity();
+    notifyListeners();
+  }
 
   /// Sets a default HTTP client (useful for mock testing).
   void setDefaultHttpClient(http.Client? client) {
@@ -203,6 +227,14 @@ class OfflineService extends ChangeNotifier {
       await prefs.setString('user_id', _userId);
     }
 
+    // Load server API base override if configured
+    final savedApiBase = prefs.getString('server_api_base');
+    if (savedApiBase != null && savedApiBase.isNotEmpty) {
+      _apiBase = savedApiBase;
+      _syncService.setApiBase(_apiBase);
+      _connectivityService.setHealthEndpoint('$_apiBase/health');
+    }
+
     // Load Pending Offline Queue from durable SQLite queue
     try {
       final dbPending = await _queue.getPendingOperations();
@@ -299,7 +331,7 @@ class OfflineService extends ChangeNotifier {
       final shouldCloseClient = client == null && _defaultClient == null;
       try {
         await httpClient.put(
-          Uri.parse("$apiBase/profile/$_userId"),
+          Uri.parse("$_apiBase/profile/$_userId"),
           headers: {"Content-Type": "application/json"},
           body: jsonEncode(profile.toJson()),
         ).timeout(const Duration(seconds: 4));
@@ -334,7 +366,7 @@ class OfflineService extends ChangeNotifier {
       final shouldCloseClient = client == null && _defaultClient == null;
       try {
         await httpClient.put(
-          Uri.parse("$apiBase/vulnerability/$_userId"),
+          Uri.parse("$_apiBase/vulnerability/$_userId"),
           headers: {"Content-Type": "application/json"},
           body: jsonEncode(profile.toJson()),
         ).timeout(const Duration(seconds: 4));
@@ -420,7 +452,7 @@ class OfflineService extends ChangeNotifier {
     final shouldCloseClient = client == null && _defaultClient == null;
     try {
       final res = await httpClient.post(
-        Uri.parse("$apiBase/emergencies"),
+        Uri.parse("$_apiBase/emergencies"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(payload),
       ).timeout(const Duration(seconds: 5));
@@ -500,15 +532,19 @@ class OfflineService extends ChangeNotifier {
   }
 
   /// Synchronizes pending queued emergencies using their ORIGINAL stored vulnerability snapshots via [SyncService].
-  Future<List<SyncResult>> syncPendingQueue({http.Client? client}) async {
+  Future<List<SyncResult>> syncPendingQueue({http.Client? client, bool force = false}) async {
     if (_isDisposed) return [];
     // T058 Requirement 3: Queue must remain untouched when OFFLINE or INTERMITTENT
-    // (unless an explicit mock client is injected for testing)
-    if (_connectivity != ConnectivityState.online && client == null) {
+    // (unless an explicit mock client is injected for testing or forced by user)
+    if (!force && _connectivity != ConnectivityState.online && client == null) {
       return [];
     }
     // T058 Requirement 4: Concurrency protection lock
     if (_isSyncing) return [];
+
+    if (force && client == null) {
+      await _connectivityService.checkConnectivity();
+    }
 
     _isSyncing = true;
     if (!_isDisposed) notifyListeners();
@@ -526,6 +562,10 @@ class OfflineService extends ChangeNotifier {
 
       // 1. Drain pending operations via the single SyncService engine in strict FIFO order
       results = await _syncService.syncAllPending(client: httpClient);
+
+      if (force && results.any((r) => r.isSuccess)) {
+        _connectivity = ConnectivityState.online;
+      }
 
       // 2. Reconcile in-memory _localQueue and _activeEmergency with authoritative results
       final successfulKeys = results
@@ -643,7 +683,7 @@ class OfflineService extends ChangeNotifier {
     final shouldCloseClient = client == null && _defaultClient == null;
     try {
       final res = await httpClient.get(
-        Uri.parse("$apiBase/emergencies/$emergencyId"),
+        Uri.parse("$_apiBase/emergencies/$emergencyId"),
         headers: {"Accept": "application/json"},
       ).timeout(const Duration(seconds: 5));
 
