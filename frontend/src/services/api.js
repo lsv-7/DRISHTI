@@ -1184,3 +1184,23 @@ export async function createSupplyShipment(payload) {
     created_at: new Date().toISOString()
   };
 }
+
+export async function apiLogin(email, password = "password", role = "ADMIN", fullName = "") {
+  try {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        password,
+        role,
+        full_name: fullName || (email ? email.split("@")[0] : "User")
+      })
+    });
+    return await handleResponse(res, "Failed to authenticate");
+  } catch (err) {
+    console.warn("apiLogin failed, fallback to local session:", err);
+    return null;
+  }
+}
+
