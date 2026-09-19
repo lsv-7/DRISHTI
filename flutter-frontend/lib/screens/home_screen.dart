@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/citizen_profile.dart';
 import '../models/vulnerability_profile.dart';
 import '../services/offline_service.dart';
 import '../widgets/educational_disclaimer_card.dart';
@@ -49,18 +50,18 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Hi, Citizen",
-                  style: TextStyle(
+                  "Hi, ${offlineService.citizenProfile.fullName.isNotEmpty ? offlineService.citizenProfile.fullName.split(' ').first : 'Citizen'}",
+                  style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
                     color: DrishtiColors.darkNavyText,
                   ),
                 ),
-                Text(
+                const Text(
                   "Stay Safe, Help Others",
                   style: TextStyle(
                     fontSize: 11,
@@ -129,7 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 14),
 
             // 7. Profile Summary Card
-            _buildProfileSummaryCard(context, profile, profileStatus),
+            _buildProfileSummaryCard(context, profile, profileStatus, offlineService.citizenProfile),
             const SizedBox(height: 14),
 
             // 8. Connectivity Simulator Bar
@@ -820,8 +821,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildProfileSummaryCard(
     BuildContext context,
     VulnerabilityProfile profile,
-    ProfileStatus status,
-  ) {
+    ProfileStatus status, [
+    CitizenProfile? citizenProfile,
+  ]) {
     Color statusColor = status == ProfileStatus.completed
         ? DrishtiColors.successGreen
         : status == ProfileStatus.defaultProfile
@@ -844,6 +846,47 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (citizenProfile != null && citizenProfile.fullName.isNotEmpty) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.person, size: 16, color: DrishtiColors.primaryBlue),
+                    const SizedBox(width: 6),
+                    Text(
+                      citizenProfile.fullName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: DrishtiColors.darkNavyText,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  citizenProfile.phoneNumber,
+                  style: const TextStyle(fontSize: 12, color: DrishtiColors.secondaryText),
+                ),
+              ],
+            ),
+            if (citizenProfile.city != null && citizenProfile.city!.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  const Icon(Icons.location_on_outlined, size: 13, color: DrishtiColors.secondaryText),
+                  const SizedBox(width: 4),
+                  Text(
+                    citizenProfile.city!,
+                    style: const TextStyle(fontSize: 11, color: DrishtiColors.secondaryText),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 10),
+            const Divider(height: 1, color: DrishtiColors.border),
+            const SizedBox(height: 10),
+          ],
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

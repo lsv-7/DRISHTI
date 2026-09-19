@@ -1,111 +1,106 @@
-# Walkthrough — Implementation of T058 (Automatic Pending-Queue Synchronization) in DRISHTI AI
+# Walkthrough — DRISHTI AI Phase 6: Citizen Basic Details & Profile Persistence
 
-Successfully implemented and verified **T058** (Automatic Pending-Queue Synchronization) in accordance with the system architecture rules and specifications.
+## Problem Addressed
+Previously, the DRISHTI Flutter client only collected vulnerability indicators (such as mobility, medical conditions, swimming ability) while completely missing essential basic citizen identity and contact details (`fullName`, `phoneNumber`, `email`, `city`, `address`, `emergencyContactName`, `emergencyContactPhone`). Responders and command center operators could not identify the reporter, communicate with survivors or their next of kin, or trace incident origins.
+
+This corrective enhancement adds first-class citizen identification and contact persistence, updates onboarding and profile management, integrates reporter identity with emergency reporting, maintains strict isolation of the immutable vulnerability snapshot, and establishes offline persistence with online background synchronization.
 
 ---
 
 ## 1. What was Implemented
 
-### Automatic Triggering on Truthful Online Transition
-- **Connectivity Listener** ([`flutter-frontend/lib/services/offline_service.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/services/offline_service.dart)):
-  - Listens to `ConnectivityService.onConnectivityChanged` stream.
-  - Automatically triggers synchronization when transitioning from a non-online state (`OFFLINE` or `INTERMITTENT`) to `ONLINE`.
-  - Stays dormant when remaining `OFFLINE` or `INTERMITTENT`.
-  - Does NOT auto-trigger on startup unless an explicit transition to `ONLINE` occurs.
+### Strongly-Typed Citizen Profile Model & Validation
+- **Model** ([`flutter-frontend/lib/models/citizen_profile.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/models/citizen_profile.dart)):
+  - Defines `CitizenProfile` containing `fullName`, `phoneNumber`, `email`, `age`, `gender`, `address`, `city`, `emergencyContactName`, `emergencyContactPhone`, and `status` (`CitizenProfileStatus.complete` / `incomplete`).
+  - Added deterministic static validation methods:
+    - `validateFullName(value)`: Non-empty, 2–100 characters.
+    - `validatePhoneNumber(value)`: Non-empty, 8–15 digits (handles international prefixes and formatting).
+    - `validateEmail(value)`: Optional, enforces valid email syntax supporting multi-domain extensions when provided.
+    - `validateEmergencyPhone(value)`: Optional, 8–15 digits when provided.
+  - Implemented `validate()`, `toJson()`, `toPersistenceJson()`, `fromJson()`, `copyWith()`, `defaultProfile()`, and `empty()`.
 
-### Single Synchronization Engine & Strict FIFO Order
-- **Queue Draining Engine** ([`flutter-frontend/lib/services/sync_service.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/services/sync_service.dart)):
-  - Both automatic sync and manual sync (`syncPendingQueue`) delegate directly to `SyncService.syncAllPending()`.
-  - Pending operations are processed in strict deterministic FIFO order (`createdAt ASC, id ASC`).
-  - Halts processing upon network transport failure to preserve remaining operations as cleanly `PENDING`.
+### Strict Identity vs. Vulnerability Snapshot Separation (ADR-008)
+- **Architectural Invariant**:
+  - Personal identity information (`reporter_name`, `contact_phone`) is placed exclusively at the **root level** of `EmergencyCreate`, `EmergencyResponse`, and local emergency dictionaries.
+  - The `vulnerability_snapshot` dictionary remains strictly isolated to operational dispatch heuristics (`age`, `age_group`, `can_swim`, `mobility_status`, `medical_conditions`, `disability_notes`).
+  - **Snapshot Immutability**: Modifying the citizen profile after an emergency has been reported does NOT alter the historical emergency's frozen vulnerability snapshot or root-level reporter identity.
 
-### Concurrency Protection & Non-Overlapping Execution
-- **Mutual Exclusion Lock**:
-  - `_isSyncing` guard in `OfflineService` ensures that only one synchronization process runs at any time.
-  - Repeated `ONLINE` notifications or bursts of network interface updates while sync is active are ignored without spawning concurrent workers or duplicate HTTP requests.
-  - `waitForSync()` provides a deterministic synchronization primitive tracking background futures via internal `Completer<void>`.
+### Two-Step Onboarding Flow
+- **OnboardingScreen** ([`flutter-frontend/lib/screens/onboarding_screen.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/screens/onboarding_screen.dart)):
+  - **Step 1 (Citizen Identification)**: Collects full name, phone number, optional email, city, address, and emergency contact details with form validation.
+  - **Step 2 (Vulnerability Profile)**: Collects operational dispatch heuristics (age, mobility status, swimming ability, medical conditions, disability notes) alongside the mandatory educational heuristic disclaimer.
+  - **Skip Options**: Citizens can skip the vulnerability setup to immediately proceed with a completed basic citizen profile and standard default vulnerability profile.
 
-### Error Classification & Intelligent Retry Handling
-- **Retryable vs Non-Retryable Error Classification**:
-  - `SyncService.isRetryableError(error)` classifies 5xx server errors, socket disconnects, and connection timeouts as retryable (`true`).
-  - Validation failures (400, 422), idempotency conflicts (409), and corrupted data are classified as non-retryable (`false`).
-  - `preparePendingQueueForSync()` resets retryable failures and stuck `IN_FLIGHT` operations back to `PENDING` prior to draining.
-  - Non-retryable failed operations remain marked `FAILED` in SQLite and are NOT endlessly retried in subsequent cycles.
+### Dedicated Citizen Profile Management
+- **ProfileScreen** ([`flutter-frontend/lib/screens/profile_screen.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/screens/profile_screen.dart)):
+  - 4 clean, structured sections:
+    1. *Basic Information* (Full Name, Phone Number, Email)
+    2. *Location & Personal Details* (City, Gender, Address)
+    3. *Emergency Contact* (Contact Name, Contact Phone)
+    4. *Vulnerability Profile (Disaster Dispatch)* (Isolated heuristics with educational disclaimer)
+  - Changes are saved immediately to local storage (`SharedPreferences`) and synchronized to the backend via `PUT /api/v1/profile/{user_id}` when online.
 
-### Local Data Integrity & Immutable Snapshots
-- Local SQLite emergency records remain permanently intact in the Drift database regardless of sync outcomes, ensuring zero data loss during disaster scenarios.
-- The original `idempotency_key` and frozen `vulnerability_snapshot` are strictly preserved across sync attempts and user profile updates.
+### Personalized Home Screen & Brand Palette
+- **HomeScreen** ([`flutter-frontend/lib/screens/home_screen.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/screens/home_screen.dart)):
+  - Personalized top-bar greeting: `"Hi, <FirstName>"`.
+  - Profile Summary Card displays citizen full name, phone number, and city above the vulnerability badges.
+  - Strictly adheres to the DRISHTI design system palette: Primary Blue `#2563EB`, Deep Navy `#1E3A8A`, Dark Navy Text `#0F172A`, Warning Orange `#F97316`, Success Green `#22C55E`, Light Blue `#DBEAFE`, and Background `#F8FAFC`.
 
-### Backend Multi-Threaded Concurrency Guard
-- [`backend/app/repositories/crud.py`](file:///c:/Users/wwwlo/Downloads/DRISHTI/backend/app/repositories/crud.py): Added `_emergency_creation_lock = threading.Lock()` ensuring that concurrent duplicate requests with identical idempotency keys never race in SQLite.
+### Backend Schema & API
+- **Data Models** ([`backend/app/models/domain.py`](file:///c:/Users/wwwlo/Downloads/DRISHTI/backend/app/models/domain.py)):
+  - `User`: Added `phone`, `gender`, `address`, `city`, `emergency_contact_name`, `emergency_contact_phone`; set `email` nullable to support phone-only registrations.
+  - `Emergency`: Added `reporter_name`, `contact_phone`.
+- **Schemas** ([`backend/app/schemas/domain.py`](file:///c:/Users/wwwlo/Downloads/DRISHTI/backend/app/schemas/domain.py)):
+  - Added `CitizenProfileUpdate` and `CitizenProfileResponse` with Pydantic field validators.
+  - Added `reporter_name` and `contact_phone` to `EmergencyCreate` and `EmergencyResponse`.
+- **Endpoints** ([`backend/app/api/v1/profile.py`](file:///c:/Users/wwwlo/Downloads/DRISHTI/backend/app/api/v1/profile.py)):
+  - `GET /api/v1/profile/{user_id}`: Retrieves citizen profile; returns 404 if not found.
+  - `PUT /api/v1/profile/{user_id}`: Creates or updates citizen basic details.
 
 ---
 
 ## 2. Automated Test Verification
 
-### Flutter Test Suites (14 Suites, 152 Tests)
-Created comprehensive unit and integration suite in [`flutter-frontend/test/automatic_sync_test.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/test/automatic_sync_test.dart) covering all 16 specified requirements:
-1. Transition from OFFLINE to ONLINE automatically triggers queue synchronization.
-2. Transition from INTERMITTENT to ONLINE automatically triggers queue synchronization.
-3. Remaining in OFFLINE does not trigger synchronization.
-4. Remaining in INTERMITTENT does not trigger synchronization.
-5. Transition from ONLINE to OFFLINE to ONLINE triggers synchronization only upon reaching ONLINE.
-6. Repeated ONLINE notifications do not trigger concurrent sync executions.
-7. Synchronization processes pending operations in strict FIFO order.
-8. Successful synchronization updates local database record to COMPLETED / authoritative ID.
-9. Transient network failure during auto-sync leaves operation retryable.
-10. Permanent validation failure during auto-sync marks operation non-retryable and does not block subsequent cycles.
-11. 409 conflict resolves idempotently to non-retryable failure without mutating local record.
-12. Partial queue success: failure of one operation does not corrupt or drop subsequent operations.
-13. Existing local emergency data remains in SQLite after failed auto-sync.
-14. Vulnerability snapshot remains intact after auto-sync.
-15. Manual sync (syncPendingQueue) still works and shares concurrency lock with auto-sync.
-16. Safe disposal of OfflineService and ConnectivityService stops background listening without leaks or errors.
+### Flutter Test Suite: 16 Suites, 178 Tests (100% Passing)
+Executed `flutter test` across all suites:
+- `test/citizen_profile_test.dart` (16/16 PASSED):
+  1. *Model: CitizenProfile serialization and deserialization*
+  2. *Model: Persistence JSON includes status and roundtrips accurately*
+  3. *Validation: Full name constraints (2 to 100 chars, non-empty)*
+  4. *Validation: Phone number constraints (8 to 15 digits)*
+  5. *Validation: Email constraints (optional, valid format if present)*
+  6. *Validation: Emergency contact phone constraints (optional)*
+  7. *Distinction: Basic Profile vs Vulnerability Profile completion states*
+  8. *OfflineService: Persistence across simulated app restarts*
+  9. *Emergency Submission: Reporter details at top level, strictly isolated from vulnerability snapshot*
+  10. *Background Sync: PUT /api/v1/profile/{user_id} when online*
+  11. *UI: OnboardingScreen Step 1 validates required citizen details*
+  12. *UI: OnboardingScreen transitions from Step 1 to Step 2 upon valid input*
+  13. *UI: OnboardingScreen skip vulnerability retains complete citizen profile*
+  14. *UI: ProfileScreen renders distinct Citizen and Vulnerability sections*
+  15. *UI: HomeScreen renders personalized greeting and citizen info card*
+  16. *UI: ProfileScreen saves updated details and calls OfflineService*
+- Plus 162 existing tests across all other 15 suites -> **Total: 178/178 PASSED**.
 
-```bash
-cd flutter-frontend
-flutter test
+### Static Analysis: 0 Issues
+Executed `flutter analyze` inside `flutter-frontend/`:
 ```
-**Result**: **152/152 tests PASSED** across all 14 test suites:
-- `test/automatic_sync_test.dart` (16/16 PASSED)
-- `test/widget_test.dart` (1/1 PASSED)
-- `test/pending_sync_status_test.dart` (5/5 PASSED)
-- `test/idempotent_sync_test.dart` (6/6 PASSED)
-- `test/sync_service_test.dart` (21/21 PASSED)
-- `test/connectivity_service_test.dart` (13/13 PASSED)
-- `test/pending_operation_queue_test.dart` (14/14 PASSED)
-- `test/local_emergency_repository_test.dart` (14/14 PASSED)
-- `test/database_test.dart` (10/10 PASSED)
-- `test/validation_and_error_states_test.dart` (12/12 PASSED)
-- `test/emergency_tracking_test.dart` (11/11 PASSED)
-- `test/location_capture_test.dart` (14/14 PASSED)
-- `test/emergency_reporting_test.dart` (7/7 PASSED)
-- `test/emergency_snapshot_test.dart` (4/4 PASSED)
-- `test/vulnerability_profile_test.dart` (4/4 PASSED)
-
-### Static Analysis
-```bash
-cd flutter-frontend
-flutter analyze
+Analyzing flutter-frontend...
+No issues found! (ran in 3.5s)
 ```
-**Result**: **No issues found! (ran in 3.0s)** (0 errors, 0 warnings, 0 infos).
+**0 errors, 0 warnings, 0 lints.**
 
-### Backend Pytest Verification
-```bash
-cd backend
-py -3.14 -m pytest app/tests/ -v
-```
-**Result**: **13/13 PASSED in 2.26s** (decision engine + idempotency tests).
+### Backend Tests: 19 Tests (100% Passing)
+Executed `py -3.14 -m pytest app/tests/ -v`:
+- `test_profile_api.py` (6/6 PASSED):
+  - `test_get_nonexistent_profile_returns_404`
+  - `test_put_profile_creates_and_retrieves`
+  - `test_put_profile_update_existing_fields`
+  - `test_profile_validation_rejects_invalid_inputs`
+  - `test_profile_user_isolation`
+  - `test_emergency_reporter_details_and_snapshot_isolation`
+- Plus 13 existing backend tests -> **Total: 19/19 PASSED**.
 
-### Web Frontend Build Verification
-```bash
-cd frontend
-npm run build
-```
-**Result**: **SUCCESSFUL BUILD in 438ms** (`dist/` generated cleanly).
-
----
-
-## 3. Updated Documentation
-- `.antigravity/tasks/Tasks.MD`: Marked `T058` as completed `[x]`.
-- `.antigravity/tasks/TasksCompleted.MD`: Appended full implementation and verification record for `T058`.
+### Frontend Web Build
+Executed `npm run build` inside `frontend/`:
+- **Vite production build succeeded cleanly in 16.61s** with 0 errors.

@@ -11,7 +11,8 @@ from app.models.domain import (
 )
 from app.schemas.domain import (
     UserCreate, EmergencyCreate, ResourceCreate, DisasterZoneCreate,
-    DisasterZonePolicyCreate, MissingPersonCreate, SimulationCreate
+    DisasterZonePolicyCreate, MissingPersonCreate, SimulationCreate,
+    CitizenProfileUpdate
 )
 from app.decision_engine.priority import calculate_priority_score
 from app.decision_engine.vulnerability import calculate_vulnerability_score
@@ -26,6 +27,47 @@ def get_user_by_email(db: Session, email: str) -> Optional[User]:
 
 def get_user_by_id(db: Session, user_id: str) -> Optional[User]:
     return db.query(User).filter(User.id == user_id).first()
+
+
+def get_citizen_profile(db: Session, user_id: str) -> Optional[User]:
+    return get_user_by_id(db, user_id)
+
+
+def update_citizen_profile(db: Session, user_id: str, profile_in: CitizenProfileUpdate) -> User:
+    user = get_user_by_id(db, user_id)
+    if not user:
+        user = User(
+            id=user_id,
+            email=profile_in.email,
+            full_name=profile_in.full_name,
+            phone=profile_in.phone,
+            gender=profile_in.gender,
+            address=profile_in.address,
+            city=profile_in.city,
+            emergency_contact_name=profile_in.emergency_contact_name,
+            emergency_contact_phone=profile_in.emergency_contact_phone,
+            role=UserRole.CITIZEN
+        )
+        db.add(user)
+    else:
+        user.full_name = profile_in.full_name
+        user.phone = profile_in.phone
+        if profile_in.email is not None:
+            user.email = profile_in.email
+        if profile_in.gender is not None:
+            user.gender = profile_in.gender
+        if profile_in.address is not None:
+            user.address = profile_in.address
+        if profile_in.city is not None:
+            user.city = profile_in.city
+        if profile_in.emergency_contact_name is not None:
+            user.emergency_contact_name = profile_in.emergency_contact_name
+        if profile_in.emergency_contact_phone is not None:
+            user.emergency_contact_phone = profile_in.emergency_contact_phone
+
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 def create_user(db: Session, user_in: UserCreate, user_id: Optional[str] = None) -> User:
@@ -224,7 +266,9 @@ def create_emergency(db: Session, e_in: EmergencyCreate, user_id: Optional[str] 
             vulnerability_factors=v_factors,
             vulnerability_snapshot=v_dict,
             affected_count=e_in.affected_count,
-            idempotency_key=e_in.idempotency_key
+            idempotency_key=e_in.idempotency_key,
+            reporter_name=e_in.reporter_name,
+            contact_phone=e_in.contact_phone
         )
 
         try:

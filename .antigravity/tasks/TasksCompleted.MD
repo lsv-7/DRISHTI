@@ -863,6 +863,77 @@ Date: 2026-09-19
 3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/ -v` -> **13/13 PASSED in 2.22s**.
 4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 494ms**.
 
+---
+
+# Phase 6 Enhancement — Citizen Basic Details & Profile Persistence
+
+## Completed Work
+- **Strongly Typed Citizen Profile Model** (`flutter-frontend/lib/models/citizen_profile.dart`):
+  - Created `CitizenProfile` data model containing `fullName`, `phoneNumber`, `email`, `age`, `gender`, `address`, `city`, `emergencyContactName`, `emergencyContactPhone`, and `status`.
+  - Added deterministic static validation methods:
+    - `validateFullName`: Non-empty, 2–100 characters.
+    - `validatePhoneNumber`: Required, 8–15 digits, supports international and domestic formatting.
+    - `validateEmail`: Optional, requires valid email pattern if provided.
+    - `validateEmergencyPhone`: Optional, 8–15 digits if provided.
+  - Implemented `validate()`, `toJson()`, `toPersistenceJson()`, `fromJson()`, `copyWith()`, `defaultProfile()`, and `empty()`.
+  - Clean separation of completion states: Basic Profile (`incomplete` vs `complete`) is clearly distinguished from Vulnerability Profile status (`notCompleted`, `defaultProfile`, `completed`). A user skipping vulnerability setup still possesses a complete basic profile.
+- **OfflineService Persistence & Separation Invariant** (`flutter-frontend/lib/services/offline_service.dart`):
+  - Added `_userCitizenProfile` state with reactive getters `citizenProfile` and `isBasicProfileComplete`.
+  - Implemented `saveCitizenProfile(profile, {client})` persisting to `SharedPreferences('citizen_profile')` for survivor restarts across app sessions.
+  - When online, automatically synchronizes citizen profile to backend via `PUT /api/v1/profile/{user_id}`; if offline/unreachable, gracefully defers without throwing unhandled exceptions.
+  - Updated `_loadLocalData()` to restore both citizen and vulnerability profiles on application launch.
+  - **ADR-008 Invariant Preservation**: In `submitEmergency()`, `reporter_name` and `contact_phone` are placed at the root level of the emergency payload, while `vulnerability_snapshot` remains strictly isolated with vulnerability heuristics only.
+  - Backward compatibility: Existing tests without explicit citizen details continue to pass by defaulting `_userCitizenProfile` cleanly.
+- **Two-Step Onboarding Flow** (`flutter-frontend/lib/screens/onboarding_screen.dart`):
+  - Re-architected into an accessible two-step flow:
+    - **Step 1 (Citizen Details)**: Collects full name, phone number, optional email, city, address, and emergency contact information with live form validation.
+    - **Step 2 (Vulnerability Profile)**: Collects operational dispatch heuristics (age slider, swimming ability, mobility status, medical conditions, disability notes) alongside the mandatory Educational Disclaimer Card.
+  - Supports "Skip Vulnerability Info" to persist complete basic details with standard default vulnerability values.
+- **Dedicated Profile Screen** (`flutter-frontend/lib/screens/profile_screen.dart`):
+  - Displays 4 distinct, clearly demarcated sections:
+    1. *Basic Information* (Full Name, Phone, Email)
+    2. *Location & Personal Details* (City, Gender, Address)
+    3. *Emergency Contact* (Contact Name, Contact Phone)
+    4. *Vulnerability Profile (Disaster Dispatch)* (Isolated heuristics with educational notice)
+  - Allows editing and saving with immediate local persistence and background server synchronization.
+- **Personalized Home Screen** (`flutter-frontend/lib/screens/home_screen.dart`):
+  - Dynamic top bar greeting: `"Hi, <FirstName>"`.
+  - Upgraded Profile Summary Card displaying citizen full name, phone number, and city above the vulnerability badges.
+- **Emergency Models & Schema Extensions**:
+  - `flutter-frontend/lib/models/emergency_tracking.dart` & `emergency_report.dart`: Added `reporterName` and `contactPhone` fields with serialization/deserialization.
+  - `backend/app/models/domain.py`: Extended `User` model (`phone`, `gender`, `address`, `city`, `emergency_contact_name`, `emergency_contact_phone`) with `email` nullable to support phone-registered citizens. Extended `Emergency` model (`reporter_name`, `contact_phone`).
+  - `backend/app/schemas/domain.py` & `schemas/__init__.py`: Added `CitizenProfileUpdate` and `CitizenProfileResponse` with Pydantic field validators. Added `reporter_name` and `contact_phone` to `EmergencyCreate` and `EmergencyResponse`.
+  - `backend/app/repositories/crud.py`: Added `get_citizen_profile(db, user_id)` and `update_citizen_profile(db, user_id, profile_in)`. Updated `create_emergency()` to attach reporter details.
+  - `backend/app/api/v1/profile.py` (NEW): Implemented `GET /api/v1/profile/{user_id}` and `PUT /api/v1/profile/{user_id}`.
+  - `backend/app/api/v1/__init__.py`: Registered `profile_router`.
+- **Test Suites**:
+  - `flutter-frontend/test/citizen_profile_test.dart` (NEW): 16 comprehensive unit and widget tests covering models, validation, persistence across simulated restarts, snapshot isolation, backend sync, and UI flows.
+  - `backend/app/tests/test_profile_api.py` (NEW): 6 tests covering 404 handling, profile CRUD, input validation, user isolation, and emergency reporter/snapshot isolation.
+
+## Verification Summary
+1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 3.5s)** (0 errors, 0 warnings, 0 infos).
+2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **178/178 tests PASSED** across all 16 test suites:
+   - `test/citizen_profile_test.dart` (16/16 PASSED)
+   - `test/offline_to_online_sync_test.dart` (10/10 PASSED)
+   - `test/automatic_sync_test.dart` (16/16 PASSED)
+   - `test/widget_test.dart` (1/1 PASSED)
+   - `test/pending_sync_status_test.dart` (5/5 PASSED)
+   - `test/idempotent_sync_test.dart` (6/6 PASSED)
+   - `test/sync_service_test.dart` (21/21 PASSED)
+   - `test/connectivity_service_test.dart` (13/13 PASSED)
+   - `test/pending_operation_queue_test.dart` (14/14 PASSED)
+   - `test/local_emergency_repository_test.dart` (14/14 PASSED)
+   - `test/database_test.dart` (10/10 PASSED)
+   - `test/validation_and_error_states_test.dart` (12/12 PASSED)
+   - `test/emergency_tracking_test.dart` (11/11 PASSED)
+   - `test/location_capture_test.dart` (14/14 PASSED)
+   - `test/emergency_reporting_test.dart` (7/7 PASSED)
+   - `test/emergency_snapshot_test.dart` (4/4 PASSED)
+   - `test/vulnerability_profile_test.dart` (4/4 PASSED)
+3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/ -v` -> **19/19 PASSED in 1.98s**.
+4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 16.61s**.
+
+
 
 
 

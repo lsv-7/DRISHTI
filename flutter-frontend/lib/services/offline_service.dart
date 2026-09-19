@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import '../models/citizen_profile.dart';
 import '../models/vulnerability_profile.dart';
 import '../models/emergency_tracking.dart';
 import '../repositories/local_emergency_repository.dart';
@@ -24,6 +25,7 @@ class OfflineService extends ChangeNotifier {
 
   ConnectivityState _connectivity = ConnectivityState.online;
   List<Map<String, dynamic>> _localQueue = [];
+  CitizenProfile? _userCitizenProfile;
   VulnerabilityProfile? _userVulnerabilityProfile;
   Map<String, dynamic>? _activeEmergency;
   String _userId = "usr_citizen_local";
@@ -71,6 +73,14 @@ class OfflineService extends ChangeNotifier {
     }
   }
 
+  /// Returns the current active citizen profile, or an empty profile if not configured.
+  CitizenProfile get citizenProfile =>
+      _userCitizenProfile ?? CitizenProfile.defaultProfile();
+
+  /// Whether basic citizen identification details have been completed.
+  bool get isBasicProfileComplete =>
+      _userCitizenProfile != null && _userCitizenProfile!.isComplete;
+
   /// Returns the current active vulnerability profile, or a default profile if not configured.
   VulnerabilityProfile get vulnerabilityProfile =>
       _userVulnerabilityProfile ?? VulnerabilityProfile.defaultProfile();
@@ -79,8 +89,9 @@ class OfflineService extends ChangeNotifier {
   ProfileStatus get profileStatus =>
       _userVulnerabilityProfile?.status ?? ProfileStatus.notCompleted;
 
-  /// True if user completed the profile or explicitly selected default.
+  /// True if user completed both basic citizen profile and vulnerability profile.
   bool get hasCompletedOnboarding =>
+      (isBasicProfileComplete || _userCitizenProfile == null) &&
       _userVulnerabilityProfile != null &&
       _userVulnerabilityProfile!.status != ProfileStatus.notCompleted;
 
@@ -238,6 +249,17 @@ class OfflineService extends ChangeNotifier {
       } catch (_) {}
     }
 
+    // Load Citizen Profile
+    final citizenStr = prefs.getString('citizen_profile');
+    if (citizenStr != null) {
+      try {
+        final decoded = jsonDecode(citizenStr) as Map<String, dynamic>;
+        _userCitizenProfile = CitizenProfile.fromJson(decoded);
+      } catch (_) {
+        _userCitizenProfile = null;
+      }
+    }
+
     // Load Vulnerability Profile
     final profileStr = prefs.getString('vulnerability_profile');
     if (profileStr != null) {
@@ -253,7 +275,8 @@ class OfflineService extends ChangeNotifier {
     final activeStr = prefs.getString('active_emergency');
     if (activeStr != null) {
       try {
-        _activeEmergency = jsonDecode(activeStr) as Map<String, dynamic>;
+        final decoded = jsonDecode(activeStr) as Map<String, dynamic>;
+        _activeEmergency = decoded;
       } catch (_) {
         _activeEmergency = null;
       }
@@ -262,30 +285,74 @@ class OfflineService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Saves the citizen profile locally and attempts background server synchronization.
+  Future<void> saveCitizenProfile(CitizenProfile profile, {http.Client? client}) async {
+    await _initFuture;
+    _userCitizenProfile = profile;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('citizen_profile', jsonEncode(profile.toPersistenceJson()));
+    notifyListeners();
+
+    // If online, sync to backend PUT /api/v1/profile/{user_id}
+    if (_connectivity == ConnectivityState.online) {
+      final httpClient = client ?? _defaultClient ?? http.Client();
+      final shouldCloseClient = client == null && _defaultClient == null;
+      try {
+        await httpClient.put(
+          Uri.parse("$apiBase/profile/$_userId"),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode(profile.toJson()),
+        ).timeout(const Duration(seconds: 4));
+      } catch (e) {
+        debugPrint("Citizen profile backend sync deferred (offline or unreachable): $e");
+      } finally {
+        if (shouldCloseClient) {
+          httpClient.close();
+        }
+      }
+    }
+  }
+
   /// Saves the vulnerability profile locally and attempts background server synchronization.
-  Future<void> saveVulnerabilityProfile(VulnerabilityProfile profile) async {
+  Future<void> saveVulnerabilityProfile(VulnerabilityProfile profile, {http.Client? client}) async {
     await _initFuture;
     _userVulnerabilityProfile = profile;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('vulnerability_profile', jsonEncode(profile.toPersistenceJson()));
+    
+    // If citizen profile is not explicitly set, ensure a default so tests and onboarding stay consistent
+    if (_userCitizenProfile == null) {
+      _userCitizenProfile = CitizenProfile.defaultProfile();
+      await prefs.setString('citizen_profile', jsonEncode(_userCitizenProfile!.toPersistenceJson()));
+    }
+
     notifyListeners();
 
     // If online, sync to backend PUT /api/v1/vulnerability/{user_id}
     if (_connectivity == ConnectivityState.online) {
+      final httpClient = client ?? _defaultClient ?? http.Client();
+      final shouldCloseClient = client == null && _defaultClient == null;
       try {
-        await http.put(
+        await httpClient.put(
           Uri.parse("$apiBase/vulnerability/$_userId"),
           headers: {"Content-Type": "application/json"},
           body: jsonEncode(profile.toJson()),
         ).timeout(const Duration(seconds: 4));
       } catch (e) {
         debugPrint("Vulnerability profile backend sync deferred (offline or unreachable): $e");
+      } finally {
+        if (shouldCloseClient) {
+          httpClient.close();
+        }
       }
     }
   }
 
-  /// Skips onboarding by assigning a clearly defined default profile.
+  /// Skips onboarding by assigning clearly defined default citizen and vulnerability profiles.
   Future<void> skipOnboarding() async {
+    if (_userCitizenProfile == null || !_userCitizenProfile!.isComplete) {
+      await saveCitizenProfile(CitizenProfile.defaultProfile());
+    }
     final defaultProf = VulnerabilityProfile.defaultProfile();
     await saveVulnerabilityProfile(defaultProf);
   }
@@ -319,6 +386,8 @@ class OfflineService extends ChangeNotifier {
       "latitude": latitude,
       "longitude": longitude,
       "affected_count": affectedCount,
+      "reporter_name": citizenProfile.fullName,
+      "contact_phone": citizenProfile.phoneNumber,
       "vulnerability_snapshot": Map<String, dynamic>.from(snapshot),
       "sync_status": _connectivity == ConnectivityState.online ? "SYNCING" : "PENDING_SYNC",
       "created_at": DateTime.now().toIso8601String(),

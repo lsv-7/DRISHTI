@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/citizen_profile.dart';
 import '../models/vulnerability_profile.dart';
 import '../services/offline_service.dart';
 import '../theme/drishti_theme.dart';
@@ -13,6 +14,19 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  // Citizen Identity Controllers
+  late TextEditingController _fullNameController;
+  late TextEditingController _phoneController;
+  late TextEditingController _emailController;
+  late TextEditingController _addressController;
+  late TextEditingController _cityController;
+  late TextEditingController _emergencyContactNameController;
+  late TextEditingController _emergencyContactPhoneController;
+  String? _gender;
+
+  // Vulnerability Profile State
   late int _age;
   late bool _canSwim;
   late String _mobilityStatus;
@@ -32,25 +46,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    final profile = Provider.of<OfflineService>(context, listen: false).vulnerabilityProfile;
-    _age = profile.age ?? 30;
-    _canSwim = profile.canSwim;
-    _mobilityStatus = profile.mobilityStatus;
-    _selectedConditions = List<String>.from(profile.medicalConditions);
-    _notesController = TextEditingController(text: profile.disabilityNotes ?? '');
+    final offlineService = Provider.of<OfflineService>(context, listen: false);
+    final citizen = offlineService.citizenProfile;
+    final vuln = offlineService.vulnerabilityProfile;
+
+    _fullNameController = TextEditingController(text: citizen.fullName);
+    _phoneController = TextEditingController(text: citizen.phoneNumber);
+    _emailController = TextEditingController(text: citizen.email ?? '');
+    _addressController = TextEditingController(text: citizen.address ?? '');
+    _cityController = TextEditingController(text: citizen.city ?? 'Vijayawada');
+    _emergencyContactNameController = TextEditingController(text: citizen.emergencyContactName ?? '');
+    _emergencyContactPhoneController = TextEditingController(text: citizen.emergencyContactPhone ?? '');
+    _gender = citizen.gender;
+
+    _age = vuln.age ?? citizen.age ?? 30;
+    _canSwim = vuln.canSwim;
+    _mobilityStatus = vuln.mobilityStatus;
+    _selectedConditions = List<String>.from(vuln.medicalConditions);
+    _notesController = TextEditingController(text: vuln.disabilityNotes ?? '');
   }
 
   @override
   void dispose() {
+    _fullNameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    _addressController.dispose();
+    _cityController.dispose();
+    _emergencyContactNameController.dispose();
+    _emergencyContactPhoneController.dispose();
     _notesController.dispose();
     super.dispose();
   }
 
   void _updateProfile() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
     setState(() => _isSaving = true);
     final offlineService = Provider.of<OfflineService>(context, listen: false);
 
-    final updatedProfile = VulnerabilityProfile(
+    final updatedCitizen = CitizenProfile(
+      fullName: _fullNameController.text.trim(),
+      phoneNumber: _phoneController.text.trim(),
+      email: _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
+      age: _age,
+      gender: _gender,
+      address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
+      city: _cityController.text.trim().isEmpty ? null : _cityController.text.trim(),
+      emergencyContactName: _emergencyContactNameController.text.trim().isEmpty
+          ? null
+          : _emergencyContactNameController.text.trim(),
+      emergencyContactPhone: _emergencyContactPhoneController.text.trim().isEmpty
+          ? null
+          : _emergencyContactPhoneController.text.trim(),
+      status: CitizenProfileStatus.complete,
+    );
+
+    final updatedVuln = VulnerabilityProfile(
       age: _age,
       ageGroup: VulnerabilityProfile.deriveAgeGroup(_age),
       canSwim: _canSwim,
@@ -60,14 +114,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       status: ProfileStatus.completed,
     );
 
-    await offlineService.saveVulnerabilityProfile(updatedProfile);
+    await offlineService.saveCitizenProfile(updatedCitizen);
+    await offlineService.saveVulnerabilityProfile(updatedVuln);
 
     if (mounted) {
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: DrishtiColors.successGreen,
-          content: Text("Vulnerability profile updated. Applied to future emergency dispatches."),
+          content: Text("Profile details updated successfully. Applied to future emergency reports."),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -77,8 +132,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final offlineService = Provider.of<OfflineService>(context);
-    final currentStatus = offlineService.profileStatus;
     final derivedGroup = VulnerabilityProfile.deriveAgeGroup(_age);
 
     return Scaffold(
@@ -88,7 +141,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: DrishtiColors.darkNavyText),
         title: const Text(
-          "My Vulnerability Profile",
+          "My Citizen Profile",
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: DrishtiColors.darkNavyText),
         ),
         shape: const Border(
@@ -97,372 +150,345 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Status Card
-            _buildStatusHeader(currentStatus),
-            const SizedBox(height: 16),
-
-            // Why this information is collected
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: DrishtiColors.lightBlue,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: DrishtiColors.primaryBlue.withValues(alpha: 0.2)),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Section 1: Basic Information
+              _buildSectionHeader("Basic Information", Icons.badge_outlined),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _fullNameController,
+                decoration: const InputDecoration(
+                  labelText: "Full Name *",
+                  prefixIcon: Icon(Icons.person_outline, color: DrishtiColors.primaryBlue),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) return "Full name is required.";
+                  if (val.trim().length < 2) return "Full name must be at least 2 characters.";
+                  return null;
+                },
               ),
-              child: const Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _phoneController,
+                decoration: const InputDecoration(
+                  labelText: "Phone Number *",
+                  prefixIcon: Icon(Icons.phone_outlined, color: DrishtiColors.primaryBlue),
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.phone,
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) return "Phone number is required.";
+                  final clean = val.trim().replaceAll(RegExp(r'[\s\-]'), '');
+                  if (!RegExp(r'^\+?[0-9]{8,15}$').hasMatch(clean)) {
+                    return "Enter a valid phone number (8-15 digits).";
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: "Email Address",
+                  prefixIcon: Icon(Icons.email_outlined, color: DrishtiColors.secondaryText),
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                validator: (val) {
+                  if (val != null && val.trim().isNotEmpty) {
+                    if (!RegExp(r'^[\w\.\-]+@[\w\-]+\.[a-zA-Z]{2,}$').hasMatch(val.trim())) {
+                      return "Enter a valid email address.";
+                    }
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+
+              // Section 2: Personal & Location Details
+              _buildSectionHeader("Location & Personal Details", Icons.location_on_outlined),
+              const SizedBox(height: 12),
+              Row(
                 children: [
-                  Icon(Icons.help_outline_rounded, color: DrishtiColors.primaryBlue, size: 20),
-                  SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      "Why this information is collected: During flood or crisis response, command centers match specialized rescue resources (medical boat teams, wheelchair vans, high-priority dispatch) based on your individual mobility and health requirements.",
-                      style: TextStyle(color: DrishtiColors.deepNavyBlue, fontSize: 12, height: 1.35),
+                    child: TextFormField(
+                      controller: _cityController,
+                      decoration: const InputDecoration(
+                        labelText: "City",
+                        prefixIcon: Icon(Icons.location_city, color: DrishtiColors.secondaryText),
+                        border: OutlineInputBorder(),
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Heuristic Disclaimer
-            const EducationalDisclaimerCard(compact: true),
-            const SizedBox(height: 20),
-
-            // Historical Immutability Reminder
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: DrishtiColors.surfaceAlt,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: DrishtiColors.border),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.history_toggle_off_rounded, color: DrishtiColors.neutralGrey, size: 16),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      "Note: Updates apply to future emergency reports. Past emergency records retain their original historical snapshots.",
-                      style: TextStyle(color: DrishtiColors.neutralGrey, fontSize: 11),
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _gender,
+                      decoration: const InputDecoration(
+                        labelText: "Gender",
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: "MALE", child: Text("Male")),
+                        DropdownMenuItem(value: "FEMALE", child: Text("Female")),
+                        DropdownMenuItem(value: "OTHER", child: Text("Other")),
+                        DropdownMenuItem(value: "PREFER_NOT_TO_SAY", child: Text("Undisclosed")),
+                      ],
+                      onChanged: (val) => setState(() => _gender = val),
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
-
-            // Age & Category
-            _buildSectionLabel("Age & Category"),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: DrishtiColors.surface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: DrishtiColors.border),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _addressController,
+                decoration: const InputDecoration(
+                  labelText: "Address / Locality",
+                  prefixIcon: Icon(Icons.home_outlined, color: DrishtiColors.secondaryText),
+                  border: OutlineInputBorder(),
+                ),
               ),
-              child: Row(
-                children: [
-                  Text(
-                    "$_age years",
-                    style: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: DrishtiColors.lightBlue,
-                      borderRadius: BorderRadius.circular(6),
+              const SizedBox(height: 24),
+
+              // Section 3: Emergency Contact
+              _buildSectionHeader("Emergency Contact", Icons.contact_emergency_outlined),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _emergencyContactNameController,
+                decoration: const InputDecoration(
+                  labelText: "Contact Person Name",
+                  hintText: "e.g. Family member, neighbor",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _emergencyContactPhoneController,
+                decoration: const InputDecoration(
+                  labelText: "Contact Person Phone",
+                  hintText: "e.g. 9876543211",
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.phone,
+                validator: (val) {
+                  if (val != null && val.trim().isNotEmpty) {
+                    final clean = val.trim().replaceAll(RegExp(r'[\s\-]'), '');
+                    if (!RegExp(r'^\+?[0-9]{8,15}$').hasMatch(clean)) {
+                      return "Enter a valid emergency contact phone.";
+                    }
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 28),
+
+              // Section 4: Vulnerability Profile (Kept Strictly Separate)
+              _buildSectionHeader("Vulnerability Profile", Icons.shield_outlined),
+              const SizedBox(height: 8),
+              const Text(
+                "Vulnerability indicators are used strictly as operational priority heuristics for emergency dispatch, never for identity or medical triage.",
+                style: TextStyle(fontSize: 12, color: DrishtiColors.secondaryText),
+              ),
+              const SizedBox(height: 12),
+              const EducationalDisclaimerCard(),
+              const SizedBox(height: 16),
+
+              // Age Slider
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: DrishtiColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: DrishtiColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("Age", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        Text("$_age yrs ($derivedGroup)", style: const TextStyle(color: DrishtiColors.deepNavy, fontWeight: FontWeight.bold)),
+                      ],
                     ),
-                    child: Text(
-                      derivedGroup,
-                      style: const TextStyle(color: DrishtiColors.primaryBlue, fontSize: 11, fontWeight: FontWeight.bold),
+                    Slider(
+                      value: _age.toDouble(),
+                      min: 1,
+                      max: 100,
+                      divisions: 99,
+                      activeColor: DrishtiColors.primaryBlue,
+                      onChanged: (val) => setState(() => _age = val.round()),
                     ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.remove_circle_outline, color: DrishtiColors.neutralGrey),
-                    onPressed: _age > 1 ? () => setState(() => _age--) : null,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle_outline, color: DrishtiColors.primaryBlue),
-                    onPressed: _age < 110 ? () => setState(() => _age++) : null,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-
-            // Swimming Ability
-            _buildSectionLabel("Swimming Ability (Flood Evacuation)"),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildChoiceButton(
-                    label: "Can Swim",
-                    selected: _canSwim,
-                    icon: Icons.pool_outlined,
-                    color: DrishtiColors.successGreen,
-                    onTap: () => setState(() => _canSwim = true),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildChoiceButton(
-                    label: "Cannot Swim",
-                    selected: !_canSwim,
-                    icon: Icons.not_interested_outlined,
-                    color: DrishtiColors.emergencyRed,
-                    onTap: () => setState(() => _canSwim = false),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-
-            // Mobility Status
-            _buildSectionLabel("Mobility Status"),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildMobilityChip("FULL", "Full Mobility", Icons.directions_walk),
-                _buildMobilityChip("LIMITED", "Limited Mobility", Icons.nordic_walking),
-                _buildMobilityChip("WHEELCHAIR", "Wheelchair User", Icons.accessible_forward),
-                _buildMobilityChip("BEDRIDDEN", "Bedridden / Immobile", Icons.airline_seat_flat),
-              ],
-            ),
-            const SizedBox(height: 18),
-
-            // Medical Conditions
-            _buildSectionLabel("Pre-existing Medical Conditions"),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _availableConditions.map((condition) {
-                final isSelected = _selectedConditions.contains(condition);
-                return FilterChip(
-                  label: Text(condition),
-                  selected: isSelected,
-                  selectedColor: DrishtiColors.lightBlue,
-                  checkmarkColor: DrishtiColors.primaryBlue,
-                  backgroundColor: DrishtiColors.surface,
-                  side: BorderSide(
-                    color: isSelected ? DrishtiColors.primaryBlue : DrishtiColors.border,
-                  ),
-                  labelStyle: TextStyle(
-                    color: isSelected ? DrishtiColors.primaryBlue : DrishtiColors.darkNavyText,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 12,
-                  ),
-                  onSelected: (selected) {
-                    setState(() {
-                      if (selected) {
-                        _selectedConditions.add(condition);
-                      } else {
-                        _selectedConditions.remove(condition);
-                      }
-                    });
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 18),
-
-            // Disability Notes
-            _buildSectionLabel("Disability & Specific Assistance Notes"),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _notesController,
-              maxLines: 2,
-              style: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 13),
-              decoration: InputDecoration(
-                hintText: "e.g., Uses walking cane, requires continuous dialysis, etc.",
-                hintStyle: const TextStyle(color: DrishtiColors.neutralGrey, fontSize: 12),
-                filled: true,
-                fillColor: DrishtiColors.surface,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: DrishtiColors.border),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: DrishtiColors.border),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: DrishtiColors.primaryBlue, width: 1.5),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 28),
+              const SizedBox(height: 16),
 
-            // Save Changes Button
-            ElevatedButton(
-              onPressed: _isSaving ? null : _updateProfile,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: DrishtiColors.primaryBlue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 0,
-              ),
-              child: _isSaving
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Text(
-                      "SAVE PROFILE CHANGES",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              // Swimming Ability
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: DrishtiColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: DrishtiColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Swimming Ability", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ChoiceChip(
+                            label: const Text("Can Swim"),
+                            selected: _canSwim,
+                            selectedColor: DrishtiColors.lightBlue,
+                            onSelected: (val) => setState(() => _canSwim = true),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ChoiceChip(
+                            label: const Text("Cannot Swim"),
+                            selected: !_canSwim,
+                            selectedColor: const Color(0xFFFFEDD5),
+                            onSelected: (val) => setState(() => _canSwim = false),
+                          ),
+                        ),
+                      ],
                     ),
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusHeader(ProfileStatus status) {
-    Color statusColor;
-    Color statusBg;
-    String statusText;
-    IconData statusIcon;
-
-    switch (status) {
-      case ProfileStatus.completed:
-        statusColor = DrishtiColors.successGreen;
-        statusBg = DrishtiColors.softGreen;
-        statusText = "Completed";
-        statusIcon = Icons.check_circle_outline;
-        break;
-      case ProfileStatus.defaultProfile:
-        statusColor = DrishtiColors.alertYellow;
-        statusBg = DrishtiColors.warningLight;
-        statusText = "Default Profile (Onboarding Skipped)";
-        statusIcon = Icons.info_outline;
-        break;
-      case ProfileStatus.notCompleted:
-        statusColor = DrishtiColors.emergencyRed;
-        statusBg = DrishtiColors.emergencyLight;
-        statusText = "Not Completed";
-        statusIcon = Icons.warning_amber_rounded;
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: statusBg,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: statusColor.withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        children: [
-          Icon(statusIcon, color: statusColor, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("Profile State", style: TextStyle(color: DrishtiColors.neutralGrey, fontSize: 11)),
-                Text(
-                  statusText,
-                  style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 13),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+              ),
+              const SizedBox(height: 16),
 
-  Widget _buildSectionLabel(String label) {
-    return Text(
-      label,
-      style: const TextStyle(
-        color: DrishtiColors.darkNavyText,
-        fontWeight: FontWeight.bold,
-        fontSize: 13,
-      ),
-    );
-  }
+              // Mobility Level
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: DrishtiColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: DrishtiColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Mobility Status", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: ['FULL', 'LIMITED', 'WHEELCHAIR', 'BEDRIDDEN'].map((status) {
+                        final selected = _mobilityStatus == status;
+                        return ChoiceChip(
+                          label: Text(status),
+                          selected: selected,
+                          selectedColor: DrishtiColors.lightBlue,
+                          onSelected: (val) => setState(() => _mobilityStatus = status),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
 
-  Widget _buildChoiceButton({
-    required String label,
-    required bool selected,
-    required IconData icon,
-    required VoidCallback onTap,
-    Color? color,
-  }) {
-    final activeColor = color ?? DrishtiColors.primaryBlue;
-    final activeBg = (activeColor == DrishtiColors.emergencyRed)
-        ? DrishtiColors.emergencyLight
-        : (activeColor == DrishtiColors.successGreen
-            ? DrishtiColors.softGreen
-            : DrishtiColors.lightBlue);
+              // Medical Conditions
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: DrishtiColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: DrishtiColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Pre-existing Medical Conditions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _availableConditions.map((condition) {
+                        final isSelected = _selectedConditions.contains(condition);
+                        return FilterChip(
+                          label: Text(condition),
+                          selected: isSelected,
+                          selectedColor: DrishtiColors.lightBlue,
+                          onSelected: (val) {
+                            setState(() {
+                              if (val) {
+                                _selectedConditions.add(condition);
+                              } else {
+                                _selectedConditions.remove(condition);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-        decoration: BoxDecoration(
-          color: selected ? activeBg : DrishtiColors.surface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected ? activeColor : DrishtiColors.border,
-            width: selected ? 1.5 : 1,
+              // Disability Notes
+              TextField(
+                controller: _notesController,
+                decoration: const InputDecoration(
+                  labelText: "Disability / Care Notes",
+                  hintText: "Optional details for dispatchers",
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 28),
+
+              // Save button
+              ElevatedButton(
+                onPressed: _isSaving ? null : _updateProfile,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: DrishtiColors.primaryBlue,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text(
+                        "Save Profile Changes",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+              ),
+            ],
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: selected ? activeColor : DrishtiColors.neutralGrey, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: selected ? activeColor : DrishtiColors.darkNavyText,
-                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
-  Widget _buildMobilityChip(String value, String label, IconData icon) {
-    final isSelected = _mobilityStatus == value;
-    final isAlert = value == 'BEDRIDDEN' || value == 'WHEELCHAIR';
-    final activeColor = isAlert ? DrishtiColors.emergencyRed : DrishtiColors.primaryBlue;
-    final activeBg = isAlert ? DrishtiColors.emergencyLight : DrishtiColors.lightBlue;
-
-    return ChoiceChip(
-      avatar: Icon(icon, size: 16, color: isSelected ? activeColor : DrishtiColors.neutralGrey),
-      label: Text(label),
-      selected: isSelected,
-      selectedColor: activeBg,
-      backgroundColor: DrishtiColors.surface,
-      side: BorderSide(color: isSelected ? activeColor : DrishtiColors.border),
-      labelStyle: TextStyle(
-        color: isSelected ? activeColor : DrishtiColors.darkNavyText,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        fontSize: 12,
-      ),
-      onSelected: (_) => setState(() => _mobilityStatus = value),
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: DrishtiColors.primaryBlue, size: 20),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: DrishtiColors.darkNavyText,
+          ),
+        ),
+      ],
     );
   }
 }

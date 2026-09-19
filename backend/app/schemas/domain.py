@@ -1,14 +1,20 @@
+import re
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 # --- Auth & User Schemas ---
 class UserBase(BaseModel):
-    email: EmailStr
+    email: Optional[EmailStr] = None
     full_name: str
     role: str = "CITIZEN"
     phone: Optional[str] = None
+    gender: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    emergency_contact_name: Optional[str] = None
+    emergency_contact_phone: Optional[str] = None
 
 
 class UserCreate(UserBase):
@@ -17,6 +23,73 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CitizenProfileUpdate(BaseModel):
+    full_name: str
+    phone: str
+    email: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    emergency_contact_name: Optional[str] = None
+    emergency_contact_phone: Optional[str] = None
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, v: str) -> str:
+        s = v.strip()
+        if len(s) < 2 or len(s) > 100:
+            raise ValueError("Full name must be between 2 and 100 characters.")
+        return s
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        s = v.strip()
+        digits = re.sub(r"\D", "", s)
+        if len(digits) < 8 or len(digits) > 15:
+            raise ValueError("Phone number must contain between 8 and 15 digits.")
+        return s
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or not v.strip():
+            return None
+        s = v.strip()
+        if not re.match(r"^[^@]+@[^@]+\.[^@]+$", s):
+            raise ValueError("Invalid email format.")
+        return s
+
+    @field_validator("emergency_contact_phone")
+    @classmethod
+    def validate_emergency_contact_phone(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or not v.strip():
+            return None
+        s = v.strip()
+        digits = re.sub(r"\D", "", s)
+        if len(digits) < 8 or len(digits) > 15:
+            raise ValueError("Emergency contact phone must contain between 8 and 15 digits.")
+        return s
+
+
+class CitizenProfileResponse(BaseModel):
+    id: str
+    full_name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    gender: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    emergency_contact_name: Optional[str] = None
+    emergency_contact_phone: Optional[str] = None
+    role: str = "CITIZEN"
     created_at: datetime
 
     class Config:
@@ -110,6 +183,8 @@ class EmergencyCreate(BaseModel):
     affected_count: int = 1
     vulnerability_snapshot: Optional[VulnerabilityProfileBase] = None
     idempotency_key: Optional[str] = None
+    reporter_name: Optional[str] = None
+    contact_phone: Optional[str] = None
 
 
 class EmergencyStatusUpdate(BaseModel):
@@ -134,6 +209,8 @@ class EmergencyResponse(BaseModel):
     vulnerability_snapshot: Optional[Dict[str, Any]] = None
     affected_count: int
     idempotency_key: Optional[str] = None
+    reporter_name: Optional[str] = None
+    contact_phone: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

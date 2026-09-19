@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 /// Strongly typed emergency tracking model matching FastAPI backend schema
 /// pp.schemas.domain.EmergencyResponse and local offline queue items.
@@ -23,6 +23,8 @@ class EmergencyTracking {
   final String syncStatus; // SYNCED, PENDING_SYNC, LOCAL_PENDING
   final String? locationLabel;
   final bool hasVulnerabilitySnapshot;
+  final String? reporterName;
+  final String? contactPhone;
 
   const EmergencyTracking({
     required this.id,
@@ -45,6 +47,8 @@ class EmergencyTracking {
     this.syncStatus = 'SYNCED',
     this.locationLabel,
     this.hasVulnerabilitySnapshot = true,
+    this.reporterName,
+    this.contactPhone,
   });
 
   bool get isLocalPending =>
@@ -170,6 +174,8 @@ class EmergencyTracking {
       'sync_status': syncStatus,
       'location_label': locationLabel,
       'has_vulnerability_snapshot': hasVulnerabilitySnapshot,
+      'reporter_name': reporterName,
+      'contact_phone': contactPhone,
     };
   }
 
@@ -240,6 +246,8 @@ class EmergencyTracking {
       syncStatus: json['sync_status'] as String? ?? 'SYNCED',
       locationLabel: json['location_label'] as String?,
       hasVulnerabilitySnapshot: hasSnap,
+      reporterName: json['reporter_name'] as String?,
+      contactPhone: json['contact_phone'] as String?,
     );
   }
 
@@ -284,6 +292,8 @@ class EmergencyTracking {
       syncStatus: 'PENDING_SYNC',
       locationLabel: json['location_label'] as String?,
       hasVulnerabilitySnapshot: json['vulnerability_snapshot'] != null,
+      reporterName: json['reporter_name'] as String?,
+      contactPhone: json['contact_phone'] as String?,
     );
   }
 }
