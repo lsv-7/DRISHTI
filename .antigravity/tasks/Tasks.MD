@@ -70,8 +70,8 @@
 - [x] T039 Implement vulnerability profile CRUD API.
 - [x] T040 Implement vulnerability scoring service.
 - [x] T041 Implement configurable weight management.
-- [ ] T042 Build Flutter vulnerability onboarding flow (one-time, updateable).
-- [ ] T043 Attach vulnerability profile snapshot to emergency submission payload.
+- [x] T042 Build Flutter vulnerability onboarding flow (one-time, updateable).
+- [x] T043 Attach vulnerability profile snapshot to emergency submission payload.
 - [x] T044 Add unit tests for vulnerability score calculation.
 
 # Phase 5 — Emergency Reporting
@@ -79,8 +79,8 @@
 - [x] T045 Implement emergency creation API (accepting vulnerability profile snapshot).
 - [x] T046 Implement emergency retrieval/filtering.
 - [x] T047 Implement emergency status transitions.
-- [ ] T048 Build Flutter emergency reporting flow.
-- [ ] T049 Add location capture.
+- [x] T048 Build Flutter emergency reporting flow.
+- [x] T049 Add location capture.
 - [ ] T050 Add emergency tracking.
 - [ ] T051 Add validation and error states.
 
