@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -6,15 +7,19 @@ import 'package:uuid/uuid.dart';
 import '../models/vulnerability_profile.dart';
 import '../models/emergency_tracking.dart';
 import '../repositories/local_emergency_repository.dart';
+import 'connectivity_service.dart';
 import 'pending_operation_queue.dart';
 
-enum ConnectivityState { online, intermittent, offline }
+export 'connectivity_service.dart' show ConnectivityState;
 
 class OfflineService extends ChangeNotifier {
   static const String apiBase = "http://localhost:3000/api/v1";
   
   final LocalEmergencyRepository _repository;
   final PendingOperationQueue _queue;
+  final ConnectivityService _connectivityService;
+  StreamSubscription<ConnectivityState>? _connectivitySubscription;
+
   ConnectivityState _connectivity = ConnectivityState.online;
   List<Map<String, dynamic>> _localQueue = [];
   VulnerabilityProfile? _userVulnerabilityProfile;
@@ -25,7 +30,9 @@ class OfflineService extends ChangeNotifier {
 
   LocalEmergencyRepository get repository => _repository;
   PendingOperationQueue get queue => _queue;
+  ConnectivityService get connectivityService => _connectivityService;
   ConnectivityState get connectivity => _connectivity;
+  ConnectivityState get connectivityState => _connectivity;
   List<Map<String, dynamic>> get localQueue => _localQueue;
   Map<String, dynamic>? get activeEmergency => _activeEmergency;
   bool get hasActiveEmergency => _activeEmergency != null || _localQueue.isNotEmpty;
@@ -49,13 +56,23 @@ class OfflineService extends ChangeNotifier {
   factory OfflineService({
     LocalEmergencyRepository? repository,
     PendingOperationQueue? queue,
+    ConnectivityService? connectivityService,
   }) {
     final repo = repository ?? LocalEmergencyRepository();
     final q = queue ?? PendingOperationQueue(repo.database);
-    return OfflineService._(repo, q);
+    final cs = connectivityService ?? ConnectivityService(autoInitialize: true);
+    return OfflineService._(repo, q, cs);
   }
 
-  OfflineService._(this._repository, this._queue) {
+  OfflineService._(this._repository, this._queue, this._connectivityService) {
+    _connectivity = _connectivityService.state;
+    _connectivitySubscription =
+        _connectivityService.onConnectivityChanged.listen((state) {
+      if (_connectivity != state) {
+        _connectivity = state;
+        notifyListeners();
+      }
+    });
     _initFuture = _loadLocalData();
   }
 
@@ -63,10 +80,15 @@ class OfflineService extends ChangeNotifier {
 
   void setConnectivity(ConnectivityState state) {
     _connectivity = state;
+    _connectivityService.setManualOverride(state);
     notifyListeners();
-    if (_connectivity == ConnectivityState.online) {
-      syncPendingQueue();
-    }
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    _connectivitySubscription = null;
+    super.dispose();
   }
 
   Future<void> _loadLocalData() async {

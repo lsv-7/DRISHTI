@@ -100,22 +100,26 @@ class HomeScreen extends StatelessWidget {
   ) {
     Color badgeColor;
     String statusText;
+    String statusSubtitle;
     IconData statusIcon;
 
     switch (connectivity) {
       case ConnectivityState.online:
         badgeColor = const Color(0xFF10B981);
         statusText = "ONLINE";
+        statusSubtitle = "Connection available";
         statusIcon = Icons.wifi_rounded;
         break;
       case ConnectivityState.intermittent:
         badgeColor = const Color(0xFFF59E0B);
         statusText = "INTERMITTENT";
+        statusSubtitle = "Connection unstable";
         statusIcon = Icons.network_check_rounded;
         break;
       case ConnectivityState.offline:
         badgeColor = const Color(0xFFEF4444);
         statusText = "OFFLINE (Local Queue Mode)";
+        statusSubtitle = "No network connection";
         statusIcon = Icons.wifi_off_rounded;
         break;
     }
@@ -134,12 +138,26 @@ class HomeScreen extends StatelessWidget {
             children: [
               Icon(statusIcon, color: badgeColor, size: 20),
               const SizedBox(width: 8),
-              Text(
-                "Network State: $statusText",
-                style: TextStyle(
-                  color: badgeColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Network State: $statusText",
+                      style: TextStyle(
+                        color: badgeColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Text(
+                      statusSubtitle,
+                      style: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

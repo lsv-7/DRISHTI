@@ -465,6 +465,80 @@ Date: 2026-09-19
 3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/` -> **5/5 PASSED in 0.08s**.
 4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 343ms**.
 
+---
+
+# T055 — Implement Connectivity State Detection
+
+## Implementation Summary
+- **Truthful Connectivity Detection Architecture** (`flutter-frontend/lib/services/connectivity_service.dart`):
+  - Created `ConnectivityService` distinguishing:
+    - `ONLINE`: Network interface is available AND backend health probe succeeds.
+    - `INTERMITTENT`: Network interface exists, but backend health probe times out or fails (e.g. captive portals, backend outage, high latency).
+    - `OFFLINE`: No network interface available (`ConnectivityResult.none`) or confirmed disconnect.
+  - Avoided naive "Wi-Fi = online" fallacy by explicitly decoupling network interface presence from backend reachability.
+  - Implemented lightweight reachability probe against DRISHTI backend health endpoint (`GET /api/v1/health`), skipping probes completely when interface is `none`.
+  - Created decoupled `ConnectivityAdapter` interface with:
+    - `PlusConnectivityAdapter`: wraps production `connectivity_plus` plugin.
+    - `MockConnectivityAdapter`: deterministic in-memory adapter for hermetic unit and widget testing without platform channel dependencies.
+  - Reactive broadcast stream: `Stream<ConnectivityState> get onConnectivityChanged`.
+  - Strict deduplication: repeated identical states will not emit duplicate stream notifications.
+  - Manual override support (`setManualOverride(ConnectivityState? state)`): supports simulated offline/intermittent states on UI and in tests.
+  - Safe lifecycle management: idempotent `initialize()` and clean `dispose()` preventing memory leaks.
+- **OfflineService Integration** (`flutter-frontend/lib/services/offline_service.dart`):
+  - Injected `ConnectivityService` as the single source of truth for connectivity.
+  - Re-exported `ConnectivityState` from `connectivity_service.dart` for 100% backward compatibility.
+  - Added `connectivityState` getter alongside `connectivity`.
+  - Delegated `setConnectivity(state)` to `_connectivityService.setManualOverride(state)`.
+  - Strictly isolated queue processing: transitioning to `ONLINE` does **NOT** automatically sync or drain the pending queue (reserved for T056).
+- **UI Integration** (`flutter-frontend/lib/screens/home_screen.dart`):
+  - Updated `_buildConnectivityCard` to truthfully communicate network states with clear subtitles:
+    - `ONLINE`: Status text `ONLINE` with subtitle `"Connection available"`.
+    - `INTERMITTENT`: Status text `INTERMITTENT` with subtitle `"Connection unstable"`.
+    - `OFFLINE`: Status text `OFFLINE (Local Queue Mode)` with subtitle `"No network connection"`.
+  - Preserved existing interactive network condition simulation chips (`Online`, `Intermittent`, `Offline`).
+- **Automated Test Suite** (`flutter-frontend/test/connectivity_service_test.dart`):
+  - 13 automated unit and integration tests verifying:
+    1. Initial connectivity state evaluation upon startup.
+    2. Online state detection when interface exists and health probe succeeds.
+    3. Offline state detection when interface is `none` without wasting HTTP probe.
+    4. Intermittent state detection when interface exists but health probe fails.
+    5. State transition: `ONLINE` -> `OFFLINE` via stream events.
+    6. State transition: `OFFLINE` -> `ONLINE` via stream events.
+    7. State transition: `ONLINE` -> `INTERMITTENT` -> `ONLINE`.
+    8. Strict deduplication of repeated identical events.
+    9. Stream and listener disposal safety.
+    10. `OfflineService` receives and reflects connectivity updates.
+    11. Queue isolation: queue is NOT automatically synchronized when connectivity becomes `ONLINE`.
+    12. Deterministic mocking with custom adapters.
+    13. Network interface presence without backend reachability yields `INTERMITTENT`, not false `ONLINE`.
+
+### Files changed
+- `flutter-frontend/pubspec.yaml` (MODIFIED — added `connectivity_plus`)
+- `flutter-frontend/lib/services/connectivity_service.dart` (NEW)
+- `flutter-frontend/lib/services/offline_service.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/home_screen.dart` (MODIFIED)
+- `flutter-frontend/test/connectivity_service_test.dart` (NEW)
+- `.antigravity/tasks/Tasks.MD` (MODIFIED)
+
+---
+
+## Verification Summary
+
+1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 2.6s)**.
+2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **103/103 tests PASSED** across all 10 test suites:
+   - `test/connectivity_service_test.dart` (13/13 PASSED)
+   - `test/pending_operation_queue_test.dart` (14/14 PASSED)
+   - `test/local_emergency_repository_test.dart` (14/14 PASSED)
+   - `test/database_test.dart` (10/10 PASSED)
+   - `test/validation_and_error_states_test.dart` (12/12 PASSED)
+   - `test/emergency_tracking_test.dart` (11/11 PASSED)
+   - `test/location_capture_test.dart` (14/14 PASSED)
+   - `test/emergency_reporting_test.dart` (7/7 PASSED)
+   - `test/emergency_snapshot_test.dart` (4/4 PASSED)
+   - `test/vulnerability_profile_test.dart` (4/4 PASSED)
+3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/` -> **5/5 PASSED in 0.05s**.
+4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 441ms**.
+
 
 
 
