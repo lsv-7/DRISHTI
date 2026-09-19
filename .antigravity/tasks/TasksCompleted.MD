@@ -242,4 +242,64 @@ Date: 2026-09-19
 3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/` -> **5/5 PASSED in 0.06s**.
 4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 478ms**.
 
+---
+
+# T052 — Add Drift/SQLite Local Database
+
+## Implementation Summary
+- **Dependencies Installed** (`flutter-frontend/pubspec.yaml`):
+  - Added `drift: ^2.31.0`, `sqlite3_flutter_libs: ^0.5.42`, `path_provider: ^2.1.5`, `path: ^1.9.1`.
+  - Added `drift_dev: ^2.31.0` and `build_runner: ^2.15.1` to dev_dependencies.
+- **Drift Table Definition** (`flutter-frontend/lib/database/tables/emergencies_table.dart`):
+  - Created `Emergencies` table mapped to `@DataClassName('EmergencyEntry')`.
+  - Added auto-incrementing integer `localId` as primary key for local records.
+  - Added unique client-side UUID v4 `idempotencyKey` text column for safe deduplication and idempotency.
+  - Added nullable authoritative server-assigned `id` text column.
+  - Added constraint-guarded fields: `title` (5-150 chars), `description` (max 500 chars), `category`, `latitude`, `longitude`, `affectedCount` (default 1).
+  - Added `vulnerabilitySnapshot` text column: stores immutable JSON snapshot of citizen vulnerability profile at creation time.
+  - Added lifecycle & sync state columns: `syncStatus` (default `LOCAL_PENDING`), `status` (default `LOCAL_PENDING`), `priorityScore`, `priorityLevel`, `priorityReasons`, `vulnerabilityScore`, `createdAt`, `updatedAt`, `lastSyncError`.
+- **Drift AppDatabase** (`flutter-frontend/lib/database/app_database.dart`):
+  - Configured `AppDatabase` with `schemaVersion = 1` and `MigrationStrategy`.
+  - Injected `QueryExecutor` support for test isolation (`NativeDatabase.memory()`) and native device SQLite file path (`LazyDatabase` + `sqlite3` + `getApplicationDocumentsDirectory`).
+  - Implemented typed CRUD & query methods:
+    - `insertEmergency(EmergenciesCompanion entry)`
+    - `getEmergencyByLocalId(int localId)`
+    - `getEmergencyByIdempotencyKey(String idempotencyKey)`
+    - `getEmergencyByServerId(String serverId)`
+    - `getAllEmergencies()`
+    - `watchAllEmergencies()`
+    - `updateEmergency(EmergenciesCompanion entry)`
+    - `updateEmergencyStatus({...})`
+    - `deleteEmergency(int localId)`
+    - `clearAllEmergencies()`
+- **Generated Code** (`flutter-frontend/lib/database/app_database.g.dart`):
+  - Executed `dart run build_runner build` to compile Drift queries, tables, and companion classes.
+- **Comprehensive Test Suite** (`flutter-frontend/test/database_test.dart`):
+  - 10 automated hermetic SQLite tests verifying database initialization, schema version 1, auto-increment local ID generation, idempotency key query, server ID query, vulnerability snapshot immutability across external profile mutations, status/priority updates without snapshot mutation, reverse chronological sorting, reactive streams via `watchAllEmergencies()`, record deletion, table clearing, and unique constraint violation rejection on duplicate idempotency keys.
+
+### Files changed
+- `flutter-frontend/pubspec.yaml` (MODIFIED)
+- `flutter-frontend/lib/database/tables/emergencies_table.dart` (NEW)
+- `flutter-frontend/lib/database/app_database.dart` (NEW)
+- `flutter-frontend/lib/database/app_database.g.dart` (NEW - GENERATED)
+- `flutter-frontend/test/database_test.dart` (NEW)
+- `.antigravity/tasks/Tasks.MD` (MODIFIED)
+
+---
+
+## Verification Summary
+
+1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 1.7s)**.
+2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **62/62 tests PASSED (0.02s)** across all 7 test suites:
+   - `test/database_test.dart` (10/10 PASSED)
+   - `test/validation_and_error_states_test.dart` (12/12 PASSED)
+   - `test/emergency_tracking_test.dart` (11/11 PASSED)
+   - `test/location_capture_test.dart` (14/14 PASSED)
+   - `test/emergency_reporting_test.dart` (7/7 PASSED)
+   - `test/emergency_snapshot_test.dart` (4/4 PASSED)
+   - `test/vulnerability_profile_test.dart` (4/4 PASSED)
+3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/` -> **5/5 PASSED in 0.07s**.
+4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 373ms**.
+
+
 
