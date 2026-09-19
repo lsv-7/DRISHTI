@@ -260,6 +260,7 @@ void main() {
         repository: repository,
         queue: queue,
         connectivityService: connectivityService,
+        autoSync: false,
       );
       await offlineService.ensureInitialized();
 

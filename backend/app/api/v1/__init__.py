@@ -10,12 +10,14 @@ from app.api.v1.simulations import router as simulations_router
 from app.api.v1.agents import router as agents_router
 from app.api.v1.map_vj import router as map_vj_router
 from app.api.v1.decision import router as decision_router
+from app.api.v1.profile import router as profile_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 
 api_v1_router.include_router(auth_router)
 api_v1_router.include_router(emergencies_router)
 api_v1_router.include_router(vulnerability_router)
+api_v1_router.include_router(profile_router)
 api_v1_router.include_router(resources_router)
 api_v1_router.include_router(policies_router)
 api_v1_router.include_router(population_router)
@@ -24,3 +26,4 @@ api_v1_router.include_router(simulations_router)
 api_v1_router.include_router(agents_router)
 api_v1_router.include_router(map_vj_router)
 api_v1_router.include_router(decision_router)
+

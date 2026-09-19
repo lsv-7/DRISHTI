@@ -5,6 +5,8 @@ import 'services/offline_service.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/home_screen.dart';
 
+import 'theme/drishti_theme.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
@@ -25,28 +27,7 @@ class DrishtiApp extends StatelessWidget {
     return MaterialApp(
       title: 'DRISHTI AI',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F172A), // Slate 900
-        primaryColor: const Color(0xFFEF4444), // Emergency Red
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFEF4444),
-          secondary: Color(0xFF3B82F6), // Accent Blue
-          surface: Color(0xFF1E293B), // Slate 800
-          error: Color(0xFFEF4444),
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF1E293B),
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
-        cardTheme: const CardThemeData(
-          color: Color(0xFF1E293B),
-          elevation: 0,
-          margin: EdgeInsets.zero,
-        ),
-        useMaterial3: true,
-      ),
+      theme: DrishtiTheme.lightTheme,
       home: const RootGate(),
     );
   }

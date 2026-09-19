@@ -72,10 +72,15 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(String, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=True)
     full_name = Column(String, nullable=False)
     role = Column(SQLEnum(UserRole), default=UserRole.CITIZEN, nullable=False)
     phone = Column(String, nullable=True)
+    gender = Column(String, nullable=True)
+    address = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    emergency_contact_name = Column(String, nullable=True)
+    emergency_contact_phone = Column(String, nullable=True)
     hashed_password = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -154,6 +159,8 @@ class Emergency(Base):
     vulnerability_snapshot = Column(JSON, nullable=True)
     affected_count = Column(Integer, default=1)
     idempotency_key = Column(String, unique=True, index=True, nullable=True)
+    reporter_name = Column(String, nullable=True)
+    contact_phone = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

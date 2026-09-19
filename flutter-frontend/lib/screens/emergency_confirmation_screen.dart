@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/drishti_theme.dart';
 import 'emergency_tracking_screen.dart';
 import 'home_screen.dart';
 
@@ -38,15 +39,15 @@ class EmergencyConfirmationScreen extends StatelessWidget {
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF0F172A),
+        backgroundColor: DrishtiColors.background,
         appBar: AppBar(
-          backgroundColor: const Color(0xFF1E293B),
+          backgroundColor: DrishtiColors.surface,
           elevation: 0,
           automaticallyImplyLeading: false,
           centerTitle: true,
           title: const Text(
             "Incident Confirmation",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: DrishtiColors.darkNavyText),
           ),
         ),
         body: SingleChildScrollView(
@@ -59,13 +60,13 @@ class EmergencyConfirmationScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: isOnline
-                      ? const Color(0xFF10B981).withValues(alpha: 0.15)
-                      : const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                      ? DrishtiColors.softGreen
+                      : DrishtiColors.fireLightOrange,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isOnline
-                        ? const Color(0xFF10B981).withValues(alpha: 0.5)
-                        : const Color(0xFFF59E0B).withValues(alpha: 0.5),
+                        ? DrishtiColors.successGreen
+                        : DrishtiColors.warningOrange,
                     width: 1.5,
                   ),
                 ),
@@ -73,7 +74,7 @@ class EmergencyConfirmationScreen extends StatelessWidget {
                   children: [
                     Icon(
                       isOnline ? Icons.check_circle_rounded : Icons.pending_actions_rounded,
-                      color: isOnline ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                      color: isOnline ? DrishtiColors.successGreen : DrishtiColors.warningOrange,
                       size: 48,
                     ),
                     const SizedBox(height: 12),
@@ -81,7 +82,7 @@ class EmergencyConfirmationScreen extends StatelessWidget {
                       isOnline ? "EMERGENCY REPORTED & TRANSMITTED" : "EMERGENCY SAVED LOCALLY",
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: isOnline ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                        color: isOnline ? DrishtiColors.successGreen : DrishtiColors.warningOrange,
                         fontWeight: FontWeight.w800,
                         fontSize: 16,
                         letterSpacing: 0.5,
@@ -93,7 +94,7 @@ class EmergencyConfirmationScreen extends StatelessWidget {
                           ? "Received by Command Center Decision Engine."
                           : "Stored in offline device queue. Will auto-sync when network or radio is available.",
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                      style: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 12),
                     ),
                   ],
                 ),
@@ -104,18 +105,18 @@ class EmergencyConfirmationScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
+                  color: DrishtiColors.surface,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF334155)),
+                  border: Border.all(color: DrishtiColors.border),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
                       "Incident Report Summary",
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      style: TextStyle(color: DrishtiColors.darkNavyText, fontWeight: FontWeight.bold, fontSize: 14),
                     ),
-                    const Divider(color: Color(0xFF334155), height: 20),
+                    const Divider(color: DrishtiColors.border, height: 20),
                     _buildDetailRow("Emergency ID", emergencyId),
                     _buildDetailRow("Category", category.replaceAll('_', ' ')),
                     _buildDetailRow("Summary", title),
@@ -124,7 +125,7 @@ class EmergencyConfirmationScreen extends StatelessWidget {
                     _buildDetailRow(
                       "Transmission State",
                       isOnline ? "SYNCED (Online)" : "LOCAL_PENDING (Offline Queue)",
-                      valueColor: isOnline ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                      valueColor: isOnline ? DrishtiColors.successGreen : DrishtiColors.warningOrange,
                     ),
                   ],
                 ),
@@ -136,9 +137,9 @@ class EmergencyConfirmationScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
+                    color: DrishtiColors.surface,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.5)),
+                    border: Border.all(color: DrishtiColors.emergencyRed.withValues(alpha: 0.5)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,18 +149,18 @@ class EmergencyConfirmationScreen extends StatelessWidget {
                         children: [
                           const Text(
                             "Priority Evaluation",
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                            style: TextStyle(color: DrishtiColors.darkNavyText, fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                              color: DrishtiColors.medicalLightRed,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               "$priorityLevel (${priorityScore ?? 0} pts)",
                               style: const TextStyle(
-                                color: Color(0xFFF87171),
+                                color: DrishtiColors.emergencyRed,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 11,
                               ),
@@ -171,7 +172,7 @@ class EmergencyConfirmationScreen extends StatelessWidget {
                         const SizedBox(height: 10),
                         const Text(
                           "Contributing Decision Engine Factors:",
-                          style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                          style: TextStyle(color: DrishtiColors.secondaryText, fontSize: 11),
                         ),
                         const SizedBox(height: 6),
                         ...reasons.map((r) => Padding(
@@ -179,11 +180,11 @@ class EmergencyConfirmationScreen extends StatelessWidget {
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text("• ", style: TextStyle(color: Color(0xFF60A5FA))),
+                                  const Text("• ", style: TextStyle(color: DrishtiColors.primaryBlue)),
                                   Expanded(
                                     child: Text(
                                       r.toString(),
-                                      style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11),
+                                      style: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 11),
                                     ),
                                   ),
                                 ],
@@ -201,27 +202,27 @@ class EmergencyConfirmationScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
+                    color: DrishtiColors.lightBlue,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF334155)),
+                    border: Border.all(color: DrishtiColors.primaryBlue.withValues(alpha: 0.3)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Row(
                         children: [
-                          Icon(Icons.shield_outlined, color: Color(0xFF60A5FA), size: 18),
+                          Icon(Icons.shield_outlined, color: DrishtiColors.primaryBlue, size: 18),
                           SizedBox(width: 8),
                           Text(
                             "Attached Vulnerability Snapshot",
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                            style: TextStyle(color: DrishtiColors.deepNavy, fontWeight: FontWeight.bold, fontSize: 13),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       const Text(
                         "Immutable traits captured at submission time to direct suitable dispatch equipment:",
-                        style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                        style: TextStyle(color: DrishtiColors.darkNavyText, fontSize: 11),
                       ),
                       const SizedBox(height: 8),
                       Wrap(
@@ -248,11 +249,11 @@ class EmergencyConfirmationScreen extends StatelessWidget {
               // Track Emergency Action Button
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEF4444),
+                  backgroundColor: DrishtiColors.emergencyRed,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  elevation: 3,
+                  elevation: 2,
                 ),
                 icon: const Icon(Icons.track_changes_rounded, size: 20),
                 label: Text(
@@ -272,8 +273,8 @@ class EmergencyConfirmationScreen extends StatelessWidget {
               // Return to Home Action Button
               OutlinedButton(
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF94A3B8),
-                  side: const BorderSide(color: Color(0xFF334155)),
+                  foregroundColor: DrishtiColors.primaryBlue,
+                  side: const BorderSide(color: DrishtiColors.border),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
@@ -306,14 +307,14 @@ class EmergencyConfirmationScreen extends StatelessWidget {
             width: 120,
             child: Text(
               label,
-              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+              style: const TextStyle(color: DrishtiColors.secondaryText, fontSize: 12),
             ),
           ),
           Expanded(
             child: Text(
               value,
               style: TextStyle(
-                color: valueColor ?? const Color(0xFFF1F5F9),
+                color: valueColor ?? DrishtiColors.darkNavyText,
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
               ),
@@ -328,16 +329,16 @@ class EmergencyConfirmationScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isAlert ? const Color(0xFFEF4444).withValues(alpha: 0.2) : const Color(0xFF0F172A),
+        color: isAlert ? DrishtiColors.medicalLightRed : DrishtiColors.surface,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: isAlert ? const Color(0xFFEF4444).withValues(alpha: 0.4) : const Color(0xFF334155),
+          color: isAlert ? DrishtiColors.emergencyRed : DrishtiColors.border,
         ),
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: isAlert ? const Color(0xFFF87171) : const Color(0xFFCBD5E1),
+          color: isAlert ? DrishtiColors.emergencyRed : DrishtiColors.darkNavyText,
           fontSize: 10,
           fontWeight: FontWeight.w500,
         ),

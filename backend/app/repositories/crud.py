@@ -1,4 +1,5 @@
 import uuid
+import threading
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -10,7 +11,8 @@ from app.models.domain import (
 )
 from app.schemas.domain import (
     UserCreate, EmergencyCreate, ResourceCreate, DisasterZoneCreate,
-    DisasterZonePolicyCreate, MissingPersonCreate, SimulationCreate
+    DisasterZonePolicyCreate, MissingPersonCreate, SimulationCreate,
+    CitizenProfileUpdate
 )
 from app.decision_engine.priority import calculate_priority_score
 from app.decision_engine.vulnerability import calculate_vulnerability_score
@@ -25,6 +27,47 @@ def get_user_by_email(db: Session, email: str) -> Optional[User]:
 
 def get_user_by_id(db: Session, user_id: str) -> Optional[User]:
     return db.query(User).filter(User.id == user_id).first()
+
+
+def get_citizen_profile(db: Session, user_id: str) -> Optional[User]:
+    return get_user_by_id(db, user_id)
+
+
+def update_citizen_profile(db: Session, user_id: str, profile_in: CitizenProfileUpdate) -> User:
+    user = get_user_by_id(db, user_id)
+    if not user:
+        user = User(
+            id=user_id,
+            email=profile_in.email,
+            full_name=profile_in.full_name,
+            phone=profile_in.phone,
+            gender=profile_in.gender,
+            address=profile_in.address,
+            city=profile_in.city,
+            emergency_contact_name=profile_in.emergency_contact_name,
+            emergency_contact_phone=profile_in.emergency_contact_phone,
+            role=UserRole.CITIZEN
+        )
+        db.add(user)
+    else:
+        user.full_name = profile_in.full_name
+        user.phone = profile_in.phone
+        if profile_in.email is not None:
+            user.email = profile_in.email
+        if profile_in.gender is not None:
+            user.gender = profile_in.gender
+        if profile_in.address is not None:
+            user.address = profile_in.address
+        if profile_in.city is not None:
+            user.city = profile_in.city
+        if profile_in.emergency_contact_name is not None:
+            user.emergency_contact_name = profile_in.emergency_contact_name
+        if profile_in.emergency_contact_phone is not None:
+            user.emergency_contact_phone = profile_in.emergency_contact_phone
+
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 def create_user(db: Session, user_in: UserCreate, user_id: Optional[str] = None) -> User:
@@ -173,63 +216,13 @@ def _is_payload_equivalent(existing: Emergency, e_in: EmergencyCreate) -> bool:
     return True
 
 
+_emergency_creation_lock = threading.Lock()
+
+
 # --- EMERGENCY REPOSITORY ---
 def create_emergency(db: Session, e_in: EmergencyCreate, user_id: Optional[str] = None) -> Emergency:
-    # 1. Check idempotency key if provided
-    if e_in.idempotency_key:
-        existing = db.query(Emergency).filter(Emergency.idempotency_key == e_in.idempotency_key).first()
-        if existing:
-            if not _is_payload_equivalent(existing, e_in):
-                raise IdempotencyConflictError(
-                    f"Idempotency key conflict: key '{e_in.idempotency_key}' is already associated with an emergency with different attributes."
-                )
-            existing._is_new = False
-            return existing
-
-    # Resolve disaster zone
-    zones = [
-        {"id": z.id, "name": z.name, "geometry_geojson": z.geometry_geojson, "is_active": z.is_active}
-        for z in db.query(DisasterZone).filter(DisasterZone.is_active == True).all()
-    ]
-    resolved_zone = resolve_disaster_zone(e_in.latitude, e_in.longitude, zones)
-    zone_id = resolved_zone["id"] if resolved_zone else None
-
-    # Calculate Priority & Vulnerability
-    v_dict = e_in.vulnerability_snapshot.model_dump() if e_in.vulnerability_snapshot else None
-    priority_score, priority_level, priority_reasons, v_score, v_factors = calculate_priority_score(
-        category=e_in.category,
-        affected_count=e_in.affected_count,
-        vulnerability_snapshot=v_dict
-    )
-
-    emergency = Emergency(
-        id=f"emg_{uuid.uuid4().hex[:12]}",
-        user_id=user_id,
-        zone_id=zone_id,
-        title=e_in.title,
-        description=e_in.description,
-        category=e_in.category,
-        latitude=e_in.latitude,
-        longitude=e_in.longitude,
-        status=EmergencyStatus.PENDING,
-        priority_score=priority_score,
-        priority_level=PriorityLevel(priority_level),
-        priority_reasons=priority_reasons,
-        vulnerability_score=v_score,
-        vulnerability_factors=v_factors,
-        vulnerability_snapshot=v_dict,
-        affected_count=e_in.affected_count,
-        idempotency_key=e_in.idempotency_key
-    )
-
-    try:
-        db.add(emergency)
-        db.commit()
-        db.refresh(emergency)
-        emergency._is_new = True
-        return emergency
-    except IntegrityError:
-        db.rollback()
+    with _emergency_creation_lock:
+        # 1. Check idempotency key if provided
         if e_in.idempotency_key:
             existing = db.query(Emergency).filter(Emergency.idempotency_key == e_in.idempotency_key).first()
             if existing:
@@ -239,7 +232,63 @@ def create_emergency(db: Session, e_in: EmergencyCreate, user_id: Optional[str] 
                     )
                 existing._is_new = False
                 return existing
-        raise
+
+        # Resolve disaster zone
+        zones = [
+            {"id": z.id, "name": z.name, "geometry_geojson": z.geometry_geojson, "is_active": z.is_active}
+            for z in db.query(DisasterZone).filter(DisasterZone.is_active == True).all()
+        ]
+        resolved_zone = resolve_disaster_zone(e_in.latitude, e_in.longitude, zones)
+        zone_id = resolved_zone["id"] if resolved_zone else None
+
+        # Calculate Priority & Vulnerability
+        v_dict = e_in.vulnerability_snapshot.model_dump() if e_in.vulnerability_snapshot else None
+        priority_score, priority_level, priority_reasons, v_score, v_factors = calculate_priority_score(
+            category=e_in.category,
+            affected_count=e_in.affected_count,
+            vulnerability_snapshot=v_dict
+        )
+
+        emergency = Emergency(
+            id=f"emg_{uuid.uuid4().hex[:12]}",
+            user_id=user_id,
+            zone_id=zone_id,
+            title=e_in.title,
+            description=e_in.description,
+            category=e_in.category,
+            latitude=e_in.latitude,
+            longitude=e_in.longitude,
+            status=EmergencyStatus.PENDING,
+            priority_score=priority_score,
+            priority_level=PriorityLevel(priority_level),
+            priority_reasons=priority_reasons,
+            vulnerability_score=v_score,
+            vulnerability_factors=v_factors,
+            vulnerability_snapshot=v_dict,
+            affected_count=e_in.affected_count,
+            idempotency_key=e_in.idempotency_key,
+            reporter_name=e_in.reporter_name,
+            contact_phone=e_in.contact_phone
+        )
+
+        try:
+            db.add(emergency)
+            db.commit()
+            db.refresh(emergency)
+            emergency._is_new = True
+            return emergency
+        except Exception:
+            db.rollback()
+            if e_in.idempotency_key:
+                existing = db.query(Emergency).filter(Emergency.idempotency_key == e_in.idempotency_key).first()
+                if existing:
+                    if not _is_payload_equivalent(existing, e_in):
+                        raise IdempotencyConflictError(
+                            f"Idempotency key conflict: key '{e_in.idempotency_key}' is already associated with an emergency with different attributes."
+                        )
+                    existing._is_new = False
+                    return existing
+            raise
 
 
 def get_all_emergencies(db: Session) -> List[Emergency]:

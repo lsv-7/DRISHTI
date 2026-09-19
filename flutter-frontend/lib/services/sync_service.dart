@@ -161,13 +161,55 @@ class SyncService {
   final PendingOperationQueue queue;
   final String apiBase;
   final Duration timeout;
+  http.Client? defaultClient;
 
   SyncService({
     required this.repository,
     required this.queue,
     this.apiBase = 'http://localhost:3000/api/v1',
     this.timeout = const Duration(seconds: 5),
+    this.defaultClient,
   });
+
+  /// Allows setting a default HTTP client (e.g. mock client for unit testing).
+  void setDefaultHttpClient(http.Client? client) {
+    defaultClient = client;
+  }
+
+  /// Evaluates whether an error message represents a retryable failure condition.
+  static bool isRetryableError(String? error) {
+    if (error == null) return true;
+    final lower = error.toLowerCase();
+    if (lower.contains('validation') ||
+        lower.contains('400') ||
+        lower.contains('422') ||
+        lower.contains('409') ||
+        lower.contains('conflict') ||
+        lower.contains('corrupted') ||
+        lower.contains('permanent') ||
+        lower.contains('forbidden') ||
+        lower.contains('unauthorized')) {
+      return false;
+    }
+    return true;
+  }
+
+  /// Prepares the pending operations queue for a synchronization cycle:
+  /// - Resets any stuck IN_FLIGHT operations back to PENDING.
+  /// - Resets previously failed RETRYABLE operations back to PENDING for retry.
+  /// - Leaves non-retryable operations (validation errors, conflicts) as FAILED.
+  Future<void> preparePendingQueueForSync() async {
+    final allOps = await queue.getAllOperations();
+    for (final op in allOps) {
+      if (op.status == 'IN_FLIGHT') {
+        await queue.resetToPending(op.id);
+      } else if (op.status == 'FAILED') {
+        if (isRetryableError(op.lastError)) {
+          await queue.resetToPending(op.id);
+        }
+      }
+    }
+  }
 
   /// Synchronizes a specific pending operation against the backend API.
   Future<SyncResult> syncOperation(
@@ -194,7 +236,8 @@ class SyncService {
     }
 
     // 3. Prepare HTTP request matching backend EmergencyCreate schema
-    final httpClient = client ?? http.Client();
+    final httpClient = client ?? defaultClient ?? http.Client();
+    final shouldCloseClient = client == null && defaultClient == null;
     try {
       final requestBody = Map<String, dynamic>.from(payload);
       // Ensure exact original idempotency key is preserved
@@ -317,7 +360,7 @@ class SyncService {
         errorMessage: errorMsg,
       );
     } finally {
-      if (client == null) {
+      if (shouldCloseClient) {
         httpClient.close();
       }
     }
@@ -342,11 +385,26 @@ class SyncService {
 
   /// Synchronizes all pending operations in deterministic FIFO order.
   Future<List<SyncResult>> syncAllPending({http.Client? client}) async {
+    await preparePendingQueueForSync();
     final pending = await queue.getPendingOperations();
     final results = <SyncResult>[];
-    for (final op in pending) {
-      final res = await syncOperation(op, client: client);
-      results.add(res);
+    final httpClient = client ?? defaultClient ?? http.Client();
+    final shouldCloseClient = client == null && defaultClient == null;
+
+    try {
+      for (final op in pending) {
+        final res = await syncOperation(op, client: httpClient);
+        results.add(res);
+        // On transport or connection loss, halt subsequent operations in this cycle
+        // to preserve them as cleanly PENDING for when network recovers.
+        if (res.status == SyncStatus.networkFailure) {
+          break;
+        }
+      }
+    } finally {
+      if (shouldCloseClient) {
+        httpClient.close();
+      }
     }
     return results;
   }

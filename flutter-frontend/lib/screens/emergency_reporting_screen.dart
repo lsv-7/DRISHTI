@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../services/offline_service.dart';
 import '../services/location_service.dart';
 import '../models/emergency_report.dart';
+import '../theme/drishti_theme.dart';
 import 'emergency_confirmation_screen.dart';
 
 class EmergencyReportingScreen extends StatefulWidget {
@@ -32,42 +33,48 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
       'label': 'Flood Rescue',
       'desc': 'Rising waters, boat needed',
       'icon': Icons.waves_rounded,
-      'color': Color(0xFF3B82F6),
+      'color': DrishtiColors.primaryBlue,
+      'lightBg': DrishtiColors.lightBlue,
     },
     {
       'id': 'MEDICAL_EMERGENCY',
       'label': 'Medical Emergency',
       'desc': 'Life-threatening injury/illness',
       'icon': Icons.medical_services_rounded,
-      'color': Color(0xFFEF4444),
+      'color': DrishtiColors.emergencyRed,
+      'lightBg': DrishtiColors.medicalLight,
     },
     {
       'id': 'TRAPPED_CITIZENS',
       'label': 'Trapped in Building',
       'desc': 'Collapsed exit or roof trapped',
       'icon': Icons.home_work_rounded,
-      'color': Color(0xFFF59E0B),
+      'color': DrishtiColors.warningOrange,
+      'lightBg': DrishtiColors.fireLight,
     },
     {
       'id': 'SHELTER_EVACUATION',
       'label': 'Shelter Needed',
       'desc': 'Displaced, needs transport',
       'icon': Icons.night_shelter_rounded,
-      'color': Color(0xFF10B981),
+      'color': DrishtiColors.successGreen,
+      'lightBg': DrishtiColors.softGreen,
     },
     {
       'id': 'RELIEF_SUPPLY',
       'label': 'Food & Water',
       'desc': 'Isolated without essentials',
       'icon': Icons.inventory_2_rounded,
-      'color': Color(0xFF8B5CF6),
+      'color': DrishtiColors.purpleAccent,
+      'lightBg': DrishtiColors.accidentLight,
     },
     {
       'id': 'OTHER',
       'label': 'Other Incident',
       'desc': 'General disaster assistance',
       'icon': Icons.emergency_rounded,
-      'color': Color(0xFF64748B),
+      'color': DrishtiColors.secondaryText,
+      'lightBg': DrishtiColors.neutralLight,
     },
   ];
 
@@ -108,7 +115,7 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
   void _showSectorSelectionModal() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E293B),
+      backgroundColor: DrishtiColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -125,23 +132,23 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.share_location_rounded, color: Color(0xFF60A5FA), size: 20),
+                        Icon(Icons.share_location_rounded, color: DrishtiColors.primaryBlue, size: 20),
                         SizedBox(width: 8),
                         Text(
                           "Select Operational Sector",
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                          style: TextStyle(color: DrishtiColors.darkNavyText, fontWeight: FontWeight.bold, fontSize: 15),
                         ),
                       ],
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: Color(0xFF94A3B8), size: 20),
+                      icon: const Icon(Icons.close, color: DrishtiColors.secondaryText, size: 20),
                       onPressed: () => Navigator.of(ctx).pop(),
                     ),
                   ],
                 ),
                 const Text(
                   "Choose a known Vijayawada disaster operational zone if device GPS is degraded or unavailable:",
-                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                  style: TextStyle(color: DrishtiColors.secondaryText, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
                 Flexible(
@@ -162,7 +169,7 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                           Navigator.of(ctx).pop();
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              backgroundColor: const Color(0xFF1E293B),
+                              backgroundColor: DrishtiColors.darkNavyText,
                               content: Text("Selected: ${sector['shortName']}"),
                               duration: const Duration(seconds: 2),
                             ),
@@ -172,17 +179,17 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFF3B82F6).withValues(alpha: 0.15) : const Color(0xFF0F172A),
+                            color: isSelected ? DrishtiColors.lightBlue : DrishtiColors.surface,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF334155),
+                              color: isSelected ? DrishtiColors.primaryBlue : DrishtiColors.border,
                             ),
                           ),
                           child: Row(
                             children: [
                               Icon(
                                 isSelected ? Icons.radio_button_checked : Icons.location_on_outlined,
-                                color: isSelected ? const Color(0xFF60A5FA) : const Color(0xFF94A3B8),
+                                color: isSelected ? DrishtiColors.primaryBlue : DrishtiColors.secondaryText,
                                 size: 20,
                               ),
                               const SizedBox(width: 10),
@@ -193,7 +200,7 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                                     Text(
                                       sector['name'] as String,
                                       style: TextStyle(
-                                        color: isSelected ? Colors.white : const Color(0xFFE2E8F0),
+                                        color: isSelected ? DrishtiColors.primaryBlue : DrishtiColors.darkNavyText,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 12,
                                       ),
@@ -201,7 +208,7 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                                     const SizedBox(height: 2),
                                     Text(
                                       "${(sector['latitude'] as double).toStringAsFixed(4)}° N, ${(sector['longitude'] as double).toStringAsFixed(4)}° E • ${sector['risk']}",
-                                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10),
+                                      style: const TextStyle(color: DrishtiColors.secondaryText, fontSize: 10),
                                     ),
                                   ],
                                 ),
@@ -321,20 +328,21 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
     final isOffline = offlineService.connectivity == ConnectivityState.offline;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: DrishtiColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: DrishtiColors.surface,
         elevation: 0,
+        iconTheme: const IconThemeData(color: DrishtiColors.darkNavyText),
         title: const Text(
           "Report Emergency / SOS",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: DrishtiColors.darkNavyText),
         ),
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 14, top: 12, bottom: 12),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: isOffline ? const Color(0xFFEF4444).withValues(alpha: 0.2) : const Color(0xFF10B981).withValues(alpha: 0.2),
+              color: isOffline ? DrishtiColors.medicalLight : DrishtiColors.softGreen,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
@@ -342,14 +350,14 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
               children: [
                 Icon(
                   isOffline ? Icons.wifi_off : Icons.wifi,
-                  color: isOffline ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                  color: isOffline ? DrishtiColors.emergencyRed : DrishtiColors.successGreen,
                   size: 14,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   isOffline ? "OFFLINE" : "ONLINE",
                   style: TextStyle(
-                    color: isOffline ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                    color: isOffline ? DrishtiColors.emergencyRed : DrishtiColors.successGreen,
                     fontWeight: FontWeight.bold,
                     fontSize: 10,
                   ),
@@ -371,22 +379,22 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                    color: DrishtiColors.medicalLight,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.6)),
+                    border: Border.all(color: DrishtiColors.emergencyRed),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 20),
+                      const Icon(Icons.error_outline_rounded, color: DrishtiColors.emergencyRed, size: 20),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           _formValidationError!,
-                          style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 12, fontWeight: FontWeight.w600),
+                          style: const TextStyle(color: DrishtiColors.emergencyRed, fontSize: 12, fontWeight: FontWeight.w600),
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close, size: 16, color: Color(0xFFFCA5A5)),
+                        icon: const Icon(Icons.close, size: 16, color: DrishtiColors.emergencyRed),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                         onPressed: () => setState(() => _formValidationError = null),
@@ -402,24 +410,24 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                    color: DrishtiColors.fireLight,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.6)),
+                    border: Border.all(color: DrishtiColors.warningOrange),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B), size: 20),
+                          const Icon(Icons.warning_amber_rounded, color: DrishtiColors.warningOrange, size: 20),
                           const SizedBox(width: 8),
                           const Text(
                             "Submission Notice",
-                            style: TextStyle(color: Color(0xFFFBBF24), fontWeight: FontWeight.bold, fontSize: 13),
+                            style: TextStyle(color: DrishtiColors.warningOrange, fontWeight: FontWeight.bold, fontSize: 13),
                           ),
                           const Spacer(),
                           IconButton(
-                            icon: const Icon(Icons.close, size: 16, color: Color(0xFFFBBF24)),
+                            icon: const Icon(Icons.close, size: 16, color: DrishtiColors.warningOrange),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                             onPressed: () => setState(() => _submissionError = null),
@@ -429,7 +437,7 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                       const SizedBox(height: 6),
                       Text(
                         _submissionError!,
-                        style: const TextStyle(color: Color(0xFFFDE68A), fontSize: 12),
+                        style: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 12),
                       ),
                     ],
                   ),
@@ -440,7 +448,7 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
               // 1. Emergency Category Selection
               const Text(
                 "1. Select Emergency Type",
-                style: TextStyle(color: Color(0xFFF1F5F9), fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(color: DrishtiColors.darkNavyText, fontWeight: FontWeight.bold, fontSize: 14),
               ),
               const SizedBox(height: 10),
               GridView.builder(
@@ -457,6 +465,7 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                   final cat = _categories[index];
                   final isSelected = _category == cat['id'];
                   final Color catColor = cat['color'] as Color;
+                  final Color lightBg = (cat['lightBg'] as Color?) ?? DrishtiColors.lightBlue;
 
                   return InkWell(
                     onTap: () {
@@ -479,16 +488,16 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isSelected ? catColor.withValues(alpha: 0.2) : const Color(0xFF1E293B),
+                        color: isSelected ? lightBg : DrishtiColors.surface,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: isSelected ? catColor : const Color(0xFF334155),
-                          width: isSelected ? 1.8 : 1,
+                          color: isSelected ? catColor : DrishtiColors.border,
+                          width: isSelected ? 2 : 1,
                         ),
                       ),
                       child: Row(
                         children: [
-                          Icon(cat['icon'] as IconData, color: isSelected ? catColor : const Color(0xFF94A3B8), size: 24),
+                          Icon(cat['icon'] as IconData, color: catColor, size: 24),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Column(
@@ -498,14 +507,14 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                                 Text(
                                   cat['label'] as String,
                                   style: TextStyle(
-                                    color: isSelected ? Colors.white : const Color(0xFFCBD5E1),
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                    color: isSelected ? catColor : DrishtiColors.darkNavyText,
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                                     fontSize: 12,
                                   ),
                                 ),
                                 Text(
                                   cat['desc'] as String,
-                                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 9),
+                                  style: const TextStyle(color: DrishtiColors.secondaryText, fontSize: 9),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -523,31 +532,31 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
               // 2. People Affected Stepper
               const Text(
                 "2. Number of People Affected",
-                style: TextStyle(color: Color(0xFFF1F5F9), fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(color: DrishtiColors.darkNavyText, fontWeight: FontWeight.bold, fontSize: 14),
               ),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
+                  color: DrishtiColors.surface,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF334155)),
+                  border: Border.all(color: DrishtiColors.border),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.people_alt_outlined, color: Color(0xFF60A5FA), size: 20),
+                    const Icon(Icons.people_alt_outlined, color: DrishtiColors.primaryBlue, size: 20),
                     const SizedBox(width: 10),
                     Text(
                       "$_affectedCount person(s) needing rescue",
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      style: const TextStyle(color: DrishtiColors.darkNavyText, fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.remove_circle_outline, color: Color(0xFF94A3B8)),
+                      icon: const Icon(Icons.remove_circle_outline, color: DrishtiColors.secondaryText),
                       onPressed: _affectedCount > 1 ? () => setState(() => _affectedCount--) : null,
                     ),
                     IconButton(
-                      icon: const Icon(Icons.add_circle_outline, color: Color(0xFF60A5FA)),
+                      icon: const Icon(Icons.add_circle_outline, color: DrishtiColors.primaryBlue),
                       onPressed: _affectedCount < 50 ? () => setState(() => _affectedCount++) : null,
                     ),
                   ],
@@ -555,31 +564,31 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 3. Location Capture & Verification
+              // 3. Incident Location & Verification
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
                     "3. Incident Location",
-                    style: TextStyle(color: Color(0xFFF1F5F9), fontWeight: FontWeight.bold, fontSize: 14),
+                    style: TextStyle(color: DrishtiColors.darkNavyText, fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       TextButton.icon(
                         style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF60A5FA),
+                          foregroundColor: DrishtiColors.primaryBlue,
                           padding: const EdgeInsets.symmetric(horizontal: 6),
                           minimumSize: const Size(60, 24),
                         ),
                         onPressed: _showSectorSelectionModal,
                         icon: const Icon(Icons.map_outlined, size: 13),
-                        label: const Text("Choose Sector", style: TextStyle(fontSize: 11)),
+                        label: const Text("Choose Sector", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
                       ),
                       const SizedBox(width: 4),
                       TextButton.icon(
                         style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF60A5FA),
+                          foregroundColor: DrishtiColors.primaryBlue,
                           padding: const EdgeInsets.symmetric(horizontal: 6),
                           minimumSize: const Size(60, 24),
                         ),
@@ -588,10 +597,10 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                             ? const SizedBox(
                                 width: 12,
                                 height: 12,
-                                child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF60A5FA)),
+                                child: CircularProgressIndicator(strokeWidth: 1.5, color: DrishtiColors.primaryBlue),
                               )
                             : const Icon(Icons.my_location_rounded, size: 13),
-                        label: const Text("Refresh GPS", style: TextStyle(fontSize: 11)),
+                        label: const Text("Refresh GPS", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
                       ),
                     ],
                   ),
@@ -604,22 +613,22 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
+                    color: DrishtiColors.surface,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF60A5FA).withValues(alpha: 0.5)),
+                    border: Border.all(color: DrishtiColors.primaryBlue),
                   ),
                   child: const Row(
                     children: [
                       SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF60A5FA)),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: DrishtiColors.primaryBlue),
                       ),
                       SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           "Acquiring high-precision GPS lock...",
-                          style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 12, fontWeight: FontWeight.w500),
+                          style: TextStyle(color: DrishtiColors.darkNavyText, fontSize: 12, fontWeight: FontWeight.w500),
                         ),
                       ),
                     ],
@@ -629,16 +638,16 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
+                    color: DrishtiColors.medicalLight,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFEF4444), width: 1.2),
+                    border: Border.all(color: DrishtiColors.emergencyRed, width: 1.2),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.location_disabled_rounded, color: Color(0xFFEF4444), size: 22),
+                          const Icon(Icons.location_disabled_rounded, color: DrishtiColors.emergencyRed, size: 22),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
@@ -649,18 +658,18 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                                       : (_location.hardwareState == GpsHardwareState.disabled
                                           ? "Device GPS Hardware Turned Off"
                                           : "GPS Acquisition Unavailable")),
-                              style: const TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.bold, fontSize: 13),
+                              style: const TextStyle(color: DrishtiColors.emergencyRed, fontWeight: FontWeight.bold, fontSize: 13),
                             ),
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                              color: DrishtiColors.emergencyRed.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Text(
                               "ACTION REQUIRED",
-                              style: TextStyle(color: Color(0xFFF87171), fontSize: 9, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: DrishtiColors.emergencyRed, fontSize: 9, fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],
@@ -669,7 +678,7 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                       Text(
                         _location.errorMessage ??
                             "Coordinates are required to dispatch emergency units. Please enable GPS or select an operational sector.",
-                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11, height: 1.3),
+                        style: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 11, height: 1.3),
                       ),
                       const SizedBox(height: 12),
                       Row(
@@ -677,8 +686,8 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                           Expanded(
                             child: OutlinedButton.icon(
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFF60A5FA),
-                                side: const BorderSide(color: Color(0xFF3B82F6)),
+                                foregroundColor: DrishtiColors.primaryBlue,
+                                side: const BorderSide(color: DrishtiColors.primaryBlue),
                                 padding: const EdgeInsets.symmetric(vertical: 8),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                               ),
@@ -696,7 +705,7 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                           Expanded(
                             child: ElevatedButton.icon(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF3B82F6),
+                                backgroundColor: DrishtiColors.primaryBlue,
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(vertical: 8),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -715,10 +724,10 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
+                    color: DrishtiColors.surface,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.4),
+                      color: DrishtiColors.border,
                     ),
                   ),
                   child: Row(
@@ -726,8 +735,8 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                       Icon(
                         Icons.location_on_rounded,
                         color: _location.source == LocationSource.gps
-                            ? const Color(0xFF10B981)
-                            : const Color(0xFF60A5FA),
+                            ? DrishtiColors.successGreen
+                            : DrishtiColors.primaryBlue,
                         size: 24,
                       ),
                       const SizedBox(width: 10),
@@ -737,11 +746,11 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                           children: [
                             Text(
                               "${_location.latitude.toStringAsFixed(4)}° N, ${_location.longitude.toStringAsFixed(4)}° E",
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                              style: const TextStyle(color: DrishtiColors.darkNavyText, fontWeight: FontWeight.bold, fontSize: 13),
                             ),
                             Text(
                               "${_location.label} • ${_location.accuracy}${_location.source == LocationSource.gps ? '' : ' (Nominal)'}",
-                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                              style: const TextStyle(color: DrishtiColors.secondaryText, fontSize: 11),
                             ),
                           ],
                         ),
@@ -750,16 +759,16 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: _location.source == LocationSource.gps
-                              ? const Color(0xFF10B981).withValues(alpha: 0.2)
-                              : const Color(0xFF3B82F6).withValues(alpha: 0.2),
+                              ? DrishtiColors.softGreen
+                              : DrishtiColors.lightBlue,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           _location.sourceBadge,
                           style: TextStyle(
                             color: _location.source == LocationSource.gps
-                                ? const Color(0xFF34D399)
-                                : const Color(0xFF60A5FA),
+                                ? DrishtiColors.successGreen
+                                : DrishtiColors.primaryBlue,
                             fontSize: 9,
                             fontWeight: FontWeight.bold,
                           ),
@@ -773,34 +782,38 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
               // 4. Description & Details
               const Text(
                 "4. Details & Landmarks",
-                style: TextStyle(color: Color(0xFFF1F5F9), fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(color: DrishtiColors.darkNavyText, fontWeight: FontWeight.bold, fontSize: 14),
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _titleController,
                 maxLength: 150,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
+                style: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 13),
                 decoration: InputDecoration(
                   labelText: "Title / Short Summary *",
-                  labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                  labelStyle: const TextStyle(color: DrishtiColors.secondaryText, fontSize: 12),
                   filled: true,
-                  fillColor: const Color(0xFF1E293B),
-                  counterStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 10),
+                  fillColor: DrishtiColors.surface,
+                  counterStyle: const TextStyle(color: DrishtiColors.secondaryText, fontSize: 10),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFF334155)),
+                    borderSide: const BorderSide(color: DrishtiColors.border),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFF334155)),
+                    borderSide: const BorderSide(color: DrishtiColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: DrishtiColors.primaryBlue, width: 1.5),
                   ),
                   errorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFFEF4444)),
+                    borderSide: const BorderSide(color: DrishtiColors.emergencyRed),
                   ),
                   focusedErrorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+                    borderSide: const BorderSide(color: DrishtiColors.emergencyRed, width: 1.5),
                   ),
                 ),
                 validator: (val) {
@@ -822,28 +835,32 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                 controller: _descriptionController,
                 maxLines: 2,
                 maxLength: 500,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
+                style: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 13),
                 decoration: InputDecoration(
                   hintText: "Specific hazards (e.g. electrical wire submerged, water at waist level, elderly trapped)...",
-                  hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                  hintStyle: const TextStyle(color: DrishtiColors.secondaryText, fontSize: 12),
                   filled: true,
-                  fillColor: const Color(0xFF1E293B),
-                  counterStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 10),
+                  fillColor: DrishtiColors.surface,
+                  counterStyle: const TextStyle(color: DrishtiColors.secondaryText, fontSize: 10),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFF334155)),
+                    borderSide: const BorderSide(color: DrishtiColors.border),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFF334155)),
+                    borderSide: const BorderSide(color: DrishtiColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: DrishtiColors.primaryBlue, width: 1.5),
                   ),
                   errorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFFEF4444)),
+                    borderSide: const BorderSide(color: DrishtiColors.emergencyRed),
                   ),
                   focusedErrorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+                    borderSide: const BorderSide(color: DrishtiColors.emergencyRed, width: 1.5),
                   ),
                 ),
                 validator: (val) {
@@ -862,9 +879,9 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
                 children: _quickPresets.map((preset) {
                   return ActionChip(
                     label: Text(preset),
-                    backgroundColor: const Color(0xFF1E293B),
-                    side: const BorderSide(color: Color(0xFF334155)),
-                    labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10),
+                    backgroundColor: DrishtiColors.neutralLight,
+                    side: const BorderSide(color: DrishtiColors.border),
+                    labelStyle: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 10),
                     onPressed: () {
                       final current = _descriptionController.text.trim();
                       if (current.isEmpty) {
@@ -882,27 +899,27 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
+                  color: DrishtiColors.lightBlue,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.4)),
+                  border: Border.all(color: DrishtiColors.primaryBlue.withValues(alpha: 0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.shield_outlined, color: Color(0xFF60A5FA), size: 16),
+                        Icon(Icons.shield_outlined, color: DrishtiColors.primaryBlue, size: 16),
                         SizedBox(width: 6),
                         Text(
                           "Attached Vulnerability Snapshot",
-                          style: TextStyle(color: Color(0xFFF1F5F9), fontWeight: FontWeight.w600, fontSize: 12),
+                          style: TextStyle(color: DrishtiColors.deepNavy, fontWeight: FontWeight.w700, fontSize: 12),
                         ),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Text(
                       "Immutable profile snapshot attached: Age ${profile.age ?? 30} (${profile.ageGroup}) • ${profile.canSwim ? 'Can Swim' : 'Cannot Swim'} • Mobility: ${profile.mobilityStatus}${profile.medicalConditions.isNotEmpty ? ' • Conditions: ${profile.medicalConditions.join(', ')}' : ''}",
-                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11, height: 1.3),
+                      style: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 11, height: 1.3),
                     ),
                   ],
                 ),
@@ -912,13 +929,13 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
               // Submit SOS Button
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _location.isValid ? const Color(0xFFEF4444) : const Color(0xFF475569),
+                  backgroundColor: _location.isValid ? DrishtiColors.emergencyRed : DrishtiColors.neutralDark,
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor: const Color(0xFF334155),
-                  disabledForegroundColor: const Color(0xFF64748B),
+                  disabledBackgroundColor: DrishtiColors.neutralDark,
+                  disabledForegroundColor: DrishtiColors.secondaryText,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  elevation: _location.isValid ? 4 : 0,
+                  elevation: _location.isValid ? 2 : 0,
                 ),
                 icon: _isSubmitting
                     ? const SizedBox(
@@ -940,8 +957,8 @@ class _EmergencyReportingScreenState extends State<EmergencyReportingScreen> {
               const SizedBox(height: 12),
               OutlinedButton(
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF94A3B8),
-                  side: const BorderSide(color: Color(0xFF334155)),
+                  foregroundColor: DrishtiColors.secondaryText,
+                  side: const BorderSide(color: DrishtiColors.border),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),

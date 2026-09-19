@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/emergency_tracking.dart';
 import '../services/offline_service.dart';
+import '../theme/drishti_theme.dart';
 import 'package:http/http.dart' as http;
 import 'home_screen.dart';
 
@@ -81,20 +82,21 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
     final isOffline = offlineService.connectivity == ConnectivityState.offline;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: DrishtiColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: DrishtiColors.surface,
         elevation: 0,
+        iconTheme: const IconThemeData(color: DrishtiColors.darkNavyText),
         centerTitle: true,
         title: const Column(
           children: [
             Text(
               "DRISHTI EMERGENCY TRACKING",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, letterSpacing: 0.8, color: Colors.white),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, letterSpacing: 0.8, color: DrishtiColors.darkNavyText),
             ),
             Text(
               "REAL-TIME INCIDENT MONITORING",
-              style: TextStyle(fontSize: 9, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 9, color: DrishtiColors.secondaryText, fontWeight: FontWeight.w500),
             ),
           ],
         ),
@@ -104,9 +106,9 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
                 ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF60A5FA)),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: DrishtiColors.primaryBlue),
                   )
-                : const Icon(Icons.refresh_rounded, color: Color(0xFF60A5FA)),
+                : const Icon(Icons.refresh_rounded, color: DrishtiColors.primaryBlue),
             tooltip: "Refresh Status",
             onPressed: _isLoading ? null : _fetchTracking,
           ),
@@ -126,11 +128,11 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
           padding: EdgeInsets.symmetric(vertical: 60),
           child: Column(
             children: [
-              CircularProgressIndicator(color: Color(0xFF3B82F6)),
+              CircularProgressIndicator(color: DrishtiColors.primaryBlue),
               SizedBox(height: 16),
               Text(
                 "Retrieving emergency tracking data...",
-                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                style: TextStyle(color: DrishtiColors.secondaryText, fontSize: 13),
               ),
             ],
           ),
@@ -143,22 +145,22 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
+          color: DrishtiColors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFEF4444)),
+          border: Border.all(color: DrishtiColors.emergencyRed),
         ),
         child: Column(
           children: [
             Icon(
               isNotFound ? Icons.search_off_rounded : Icons.error_outline_rounded,
-              color: const Color(0xFFEF4444),
+              color: DrishtiColors.emergencyRed,
               size: 40,
             ),
             const SizedBox(height: 12),
             Text(
               isNotFound ? "Emergency Report Not Found (404)" : "Tracking Unavailable",
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+              style: const TextStyle(color: DrishtiColors.emergencyRed, fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 8),
             Text(
@@ -166,7 +168,7 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
                   ? "No incident matches ID '${widget.emergencyId}' on the command center server. It may have expired, been cancelled, or the ID was misentered."
                   : _errorMessage!,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+              style: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 12),
             ),
             const SizedBox(height: 16),
             Row(
@@ -174,7 +176,7 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
               children: [
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3B82F6),
+                    backgroundColor: DrishtiColors.primaryBlue,
                     foregroundColor: Colors.white,
                   ),
                   onPressed: _fetchTracking,
@@ -184,8 +186,8 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
                 const SizedBox(width: 10),
                 OutlinedButton(
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFCBD5E1),
-                    side: const BorderSide(color: Color(0xFF334155)),
+                    foregroundColor: DrishtiColors.primaryBlue,
+                    side: const BorderSide(color: DrishtiColors.border),
                   ),
                   onPressed: () {
                     Navigator.of(context).pushAndRemoveUntil(
@@ -213,18 +215,18 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+              color: DrishtiColors.fireLightOrange,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.5)),
+              border: Border.all(color: DrishtiColors.warningOrange),
             ),
             child: const Row(
               children: [
-                Icon(Icons.wifi_off_rounded, color: Color(0xFFF59E0B), size: 16),
+                Icon(Icons.wifi_off_rounded, color: DrishtiColors.warningOrange, size: 16),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     "Device is currently OFFLINE. Displaying cached local tracking data.",
-                    style: TextStyle(color: Color(0xFFFDE68A), fontSize: 11, fontWeight: FontWeight.w500),
+                    style: TextStyle(color: DrishtiColors.darkNavyText, fontSize: 11, fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -238,18 +240,18 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+              color: DrishtiColors.medicalLightRed,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.4)),
+              border: Border.all(color: DrishtiColors.emergencyRed),
             ),
             child: Row(
               children: [
-                const Icon(Icons.sync_problem_rounded, color: Color(0xFFEF4444), size: 16),
+                const Icon(Icons.sync_problem_rounded, color: DrishtiColors.emergencyRed, size: 16),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     "Status refresh failed: $_errorMessage (showing cached state).",
-                    style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 11),
+                    style: const TextStyle(color: DrishtiColors.emergencyRed, fontSize: 11),
                   ),
                 ),
               ],
@@ -262,9 +264,9 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: tracking.statusColor.withValues(alpha: 0.12),
+            color: DrishtiColors.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: tracking.statusColor.withValues(alpha: 0.5), width: 1.5),
+            border: Border.all(color: tracking.statusColor, width: 1.5),
           ),
           child: Column(
             children: [
@@ -274,19 +276,19 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A),
+                      color: DrishtiColors.lightBlue,
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFF334155)),
+                      border: Border.all(color: DrishtiColors.primaryBlue.withValues(alpha: 0.3)),
                     ),
                     child: Text(
                       isLocalPending ? "LOCAL QUEUE" : "ID: ${tracking.id}",
-                      style: const TextStyle(color: Color(0xFF60A5FA), fontWeight: FontWeight.bold, fontSize: 11),
+                      style: const TextStyle(color: DrishtiColors.primaryBlue, fontWeight: FontWeight.bold, fontSize: 11),
                     ),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: tracking.statusColor.withValues(alpha: 0.2),
+                      color: tracking.statusColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -313,7 +315,7 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
               Text(
                 tracking.statusDescription,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12, height: 1.3),
+                style: const TextStyle(color: DrishtiColors.secondaryText, fontSize: 12, height: 1.3),
               ),
             ],
           ),
@@ -328,18 +330,18 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E293B),
+            color: DrishtiColors.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFF334155)),
+            border: Border.all(color: DrishtiColors.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 "Incident Information",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                style: TextStyle(color: DrishtiColors.darkNavyText, fontWeight: FontWeight.bold, fontSize: 13),
               ),
-              const Divider(color: Color(0xFF334155), height: 18),
+              const Divider(color: DrishtiColors.border, height: 18),
               _buildDetailRow("Title", tracking.title),
               _buildDetailRow("Category", tracking.category.replaceAll('_', ' ')),
               if (tracking.description != null && tracking.description!.isNotEmpty)
@@ -347,7 +349,7 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
               _buildDetailRow("People Affected", "${tracking.affectedCount} person(s)"),
               _buildDetailRow("Coordinates", "${tracking.latitude.toStringAsFixed(4)}° N, ${tracking.longitude.toStringAsFixed(4)}° E"),
               _buildDetailRow("Transmission", isLocalPending ? "SAVED LOCALLY (Offline Queue)" : "TRANSMITTED (Server Synced)",
-                  valueColor: isLocalPending ? const Color(0xFFF59E0B) : const Color(0xFF10B981)),
+                  valueColor: isLocalPending ? DrishtiColors.warningOrange : DrishtiColors.successGreen),
             ],
           ),
         ),
@@ -358,9 +360,9 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E293B),
+              color: DrishtiColors.surface,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.4)),
+              border: Border.all(color: DrishtiColors.emergencyRed.withValues(alpha: 0.4)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,17 +372,17 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
                   children: [
                     const Text(
                       "Priority Evaluation",
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                      style: TextStyle(color: DrishtiColors.darkNavyText, fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                        color: DrishtiColors.medicalLightRed,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         "${tracking.priorityLevel} (${tracking.priorityScore ?? 0} pts)",
-                        style: const TextStyle(color: Color(0xFFF87171), fontWeight: FontWeight.bold, fontSize: 11),
+                        style: const TextStyle(color: DrishtiColors.emergencyRed, fontWeight: FontWeight.bold, fontSize: 11),
                       ),
                     ),
                   ],
@@ -389,7 +391,7 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
                   const SizedBox(height: 10),
                   const Text(
                     "Decision Engine Contributing Factors:",
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                    style: TextStyle(color: DrishtiColors.secondaryText, fontSize: 11),
                   ),
                   const SizedBox(height: 6),
                   ...tracking.priorityReasons.map((reason) => Padding(
@@ -397,11 +399,11 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text("• ", style: TextStyle(color: Color(0xFF60A5FA))),
+                            const Text("• ", style: TextStyle(color: DrishtiColors.primaryBlue)),
                             Expanded(
                               child: Text(
                                 reason,
-                                style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 11),
+                                style: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 11),
                               ),
                             ),
                           ],
@@ -419,18 +421,18 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E293B),
+              color: DrishtiColors.lightBlue,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.3)),
+              border: Border.all(color: DrishtiColors.primaryBlue.withValues(alpha: 0.3)),
             ),
             child: const Row(
               children: [
-                Icon(Icons.shield_outlined, color: Color(0xFF60A5FA), size: 18),
+                Icon(Icons.shield_outlined, color: DrishtiColors.primaryBlue, size: 18),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     "VULNERABILITY PROFILE ATTACHED (Directs Dispatch Equipment)",
-                    style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 11, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: DrishtiColors.deepNavy, fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -442,9 +444,9 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E293B),
+            color: DrishtiColors.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFF334155)),
+            border: Border.all(color: DrishtiColors.border),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -454,17 +456,17 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
                 children: [
                   const Text(
                     "Last Updated",
-                    style: TextStyle(color: Color(0xFF64748B), fontSize: 10),
+                    style: TextStyle(color: DrishtiColors.secondaryText, fontSize: 10),
                   ),
                   Text(
                     _formatDate(tracking.updatedAt),
-                    style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12, fontWeight: FontWeight.w500),
+                    style: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 12, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3B82F6),
+                  backgroundColor: DrishtiColors.primaryBlue,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -481,8 +483,8 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
         // Return to Home Dashboard
         OutlinedButton(
           style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFF94A3B8),
-            side: const BorderSide(color: Color(0xFF334155)),
+            foregroundColor: DrishtiColors.primaryBlue,
+            side: const BorderSide(color: DrishtiColors.border),
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
@@ -514,22 +516,22 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
+        color: DrishtiColors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF334155)),
+        border: Border.all(color: DrishtiColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             "Response Progression",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+            style: TextStyle(color: DrishtiColors.darkNavyText, fontWeight: FontWeight.bold, fontSize: 13),
           ),
           const SizedBox(height: 14),
           if (isCancelled)
             const Text(
               "Incident report was cancelled.",
-              style: TextStyle(color: Color(0xFFEF4444), fontSize: 12),
+              style: TextStyle(color: DrishtiColors.emergencyRed, fontSize: 12),
             )
           else
             ...List.generate(steps.length, (index) {
@@ -541,9 +543,9 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
               if (isCurrent) {
                 stepColor = tracking.statusColor;
               } else if (isCompleted) {
-                stepColor = const Color(0xFF10B981);
+                stepColor = DrishtiColors.successGreen;
               } else {
-                stepColor = const Color(0xFF475569);
+                stepColor = DrishtiColors.border;
               }
 
               return Row(
@@ -555,7 +557,7 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
                         width: 22,
                         height: 22,
                         decoration: BoxDecoration(
-                          color: isCurrent || isCompleted ? stepColor.withValues(alpha: 0.2) : const Color(0xFF0F172A),
+                          color: isCurrent || isCompleted ? stepColor.withValues(alpha: 0.15) : DrishtiColors.surface,
                           shape: BoxShape.circle,
                           border: Border.all(color: stepColor, width: isCurrent ? 2 : 1.2),
                         ),
@@ -573,7 +575,7 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
                         Container(
                           width: 2,
                           height: 26,
-                          color: isCompleted ? const Color(0xFF10B981) : const Color(0xFF334155),
+                          color: isCompleted ? DrishtiColors.successGreen : DrishtiColors.border,
                         ),
                     ],
                   ),
@@ -587,7 +589,7 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
                           Text(
                             steps[index]['title']!,
                             style: TextStyle(
-                              color: isCurrent ? Colors.white : (isCompleted ? const Color(0xFFCBD5E1) : const Color(0xFF64748B)),
+                              color: isCurrent ? DrishtiColors.darkNavyText : (isCompleted ? DrishtiColors.darkNavyText : DrishtiColors.secondaryText),
                               fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
                               fontSize: 12,
                             ),
@@ -595,7 +597,7 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
                           Text(
                             steps[index]['subtitle']!,
                             style: TextStyle(
-                              color: isCurrent ? stepColor : const Color(0xFF64748B),
+                              color: isCurrent ? stepColor : DrishtiColors.secondaryText,
                               fontSize: 10,
                             ),
                           ),
@@ -622,14 +624,14 @@ class _EmergencyTrackingScreenState extends State<EmergencyTrackingScreen> {
             width: 120,
             child: Text(
               label,
-              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+              style: const TextStyle(color: DrishtiColors.secondaryText, fontSize: 12),
             ),
           ),
           Expanded(
             child: Text(
               value,
               style: TextStyle(
-                color: valueColor ?? const Color(0xFFF1F5F9),
+                color: valueColor ?? DrishtiColors.darkNavyText,
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
               ),

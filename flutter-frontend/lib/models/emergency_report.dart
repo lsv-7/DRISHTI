@@ -43,6 +43,8 @@ class EmergencyReport {
   final String? priorityLevel;
   final List<String> priorityReasons;
   final double? vulnerabilityScore;
+  final String? reporterName;
+  final String? contactPhone;
 
   const EmergencyReport({
     this.id,
@@ -60,6 +62,8 @@ class EmergencyReport {
     this.priorityLevel,
     this.priorityReasons = const [],
     this.vulnerabilityScore,
+    this.reporterName,
+    this.contactPhone,
   });
 
   static const List<String> validCategories = [
@@ -139,6 +143,8 @@ class EmergencyReport {
       'latitude': latitude,
       'longitude': longitude,
       'affected_count': affectedCount,
+      if (reporterName != null) 'reporter_name': reporterName,
+      if (contactPhone != null) 'contact_phone': contactPhone,
       'vulnerability_snapshot': vulnerabilitySnapshot != null
           ? Map<String, dynamic>.from(vulnerabilitySnapshot!)
           : null,
@@ -156,6 +162,8 @@ class EmergencyReport {
       'latitude': latitude,
       'longitude': longitude,
       'affected_count': affectedCount,
+      'reporter_name': reporterName,
+      'contact_phone': contactPhone,
       'vulnerability_snapshot': vulnerabilitySnapshot != null
           ? Map<String, dynamic>.from(vulnerabilitySnapshot!)
           : null,
@@ -222,6 +230,8 @@ class EmergencyReport {
       priorityLevel: json['priority_level'] as String?,
       priorityReasons: reasons,
       vulnerabilityScore: vulnScore,
+      reporterName: json['reporter_name'] as String?,
+      contactPhone: json['contact_phone'] as String?,
     );
   }
 }

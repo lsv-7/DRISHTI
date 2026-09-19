@@ -684,6 +684,258 @@ Date: 2026-09-19
 3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/ -v` -> **13/13 PASSED in 3.14s**.
 4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 352ms**.
 
+---
+
+# T059 — Show Local Pending/Sync Status in Flutter with DRISHTI Design System
+
+## Completed Work
+- **DRISHTI Color Palette & Theme System** (`flutter-frontend/lib/theme/drishti_theme.dart`):
+  - Centralized palette matching the official DRISHTI mockup design specification:
+    - Primary Brand: `#2563EB` (Primary Blue), `#1E3A8A` (Deep Navy), `#0F172A` (Dark Navy Text).
+    - Emergency / Alert: `#EF4444` (Emergency Red), `#F97316` (Warning Orange), `#FBBF24` (Alert Yellow).
+    - Success / Safety: `#22C55E` (Success Green), `#DCFCE7` (Soft Green).
+    - Supporting: `#DBEAFE` (Light Blue), `#8B5CF6` (Purple Accent).
+    - Neutrals: `#F8FAFC` (Background), `#FFFFFF` (Surface), `#E2E8F0` (Border), `#64748B` (Secondary Text).
+    - Semantic Light Tints: `#FEE2E2` (Medical / SOS), `#FED7AA` (Fire / Warning), `#EDE9FE` (Missing / Accent), `#FEF3C7` (Alert / Pending), `#F1F5F9` (Neutral Light).
+  - Defined `DrishtiTheme.lightTheme` with matching AppBar, Cards, InputFields, ElevateButtons, OutlinedButtons, and Badges.
+- **Truthful Local Pending & Sync Queue Status UI** (`flutter-frontend/lib/screens/home_screen.dart`):
+  - 2x2 Hero Action Grid matching Mockup Screen 4:
+    - SOS Emergency in Medical Light Red (`#FEE2E2` / `#EF4444`).
+    - Request Help in Light Blue (`#DBEAFE` / `#2563EB`).
+    - Report Missing Person in Light Purple (`#EDE9FE` / `#8B5CF6`).
+    - Find Shelter Nearby in Soft Green (`#DCFCE7` / `#22C55E`).
+  - Offline Mode Checklist matching Mockup Screens 7 & 8:
+    - Displays "You're Offline" with red wifi-off badge.
+    - Displays 3-item checklist: "Request saved locally", "Stored in offline queue (X Pending)", and "Will sync automatically when connection returns".
+  - Online Synchronized / Pending Status:
+    - Shows dynamic status indicator badge (PENDING in `#FBBF24`, SYNCED in `#22C55E`, FAILED in `#EF4444`).
+    - Provides a "Sync Now" button when online with pending operations.
+    - Displays a dismissible/contextual warning banner if `lastSyncError` is present.
+- **Application-Wide Screen Restyling**:
+  - `main.dart`: Integrated `DrishtiTheme.lightTheme`.
+  - `educational_disclaimer_card.dart`: Styled with `#DBEAFE` background, `#1E3A8A` text, and `#2563EB` info badge.
+  - `emergency_reporting_screen.dart`: Light theme, sector selection modal in clean surface with `#2563EB` indicators.
+  - `emergency_confirmation_screen.dart`: Restyled with green confirmation for online transmission and orange badge + offline checklist for local saves.
+  - `emergency_tracking_screen.dart`: Restyled timeline cards, status headers, 404 cards, and offline warnings.
+  - `onboarding_screen.dart` & `profile_screen.dart`: Restyled age steppers, swimming ability cards, mobility chips, medical conditions filter chips, and action buttons with the light theme palette.
+- **Automated Test Suite** (`flutter-frontend/test/pending_sync_status_test.dart`):
+  - 5 automated widget tests verifying synchronized state rendering, offline checklist rendering, "Sync Now" button rendering and behavior, error warning display, and color palette invariants.
+
+### Files changed
+- `flutter-frontend/lib/theme/drishti_theme.dart` (NEW)
+- `flutter-frontend/lib/main.dart` (MODIFIED)
+- `flutter-frontend/lib/widgets/educational_disclaimer_card.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/home_screen.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/emergency_reporting_screen.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/emergency_confirmation_screen.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/emergency_tracking_screen.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/onboarding_screen.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/profile_screen.dart` (MODIFIED)
+- `flutter-frontend/test/pending_sync_status_test.dart` (NEW)
+- `.antigravity/tasks/Tasks.MD` (MODIFIED)
+- `.antigravity/tasks/TasksCompleted.MD` (MODIFIED)
+
+---
+
+## Verification Summary
+
+1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 2.2s)**.
+2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **135/135 tests PASSED (0.06s)** across all 13 test suites:
+   - `test/pending_sync_status_test.dart` (5/5 PASSED)
+   - `test/idempotent_sync_test.dart` (6/6 PASSED)
+   - `test/sync_service_test.dart` (21/21 PASSED)
+   - `test/connectivity_service_test.dart` (13/13 PASSED)
+   - `test/pending_operation_queue_test.dart` (14/14 PASSED)
+   - `test/local_emergency_repository_test.dart` (14/14 PASSED)
+   - `test/database_test.dart` (10/10 PASSED)
+   - `test/validation_and_error_states_test.dart` (12/12 PASSED)
+   - `test/emergency_tracking_test.dart` (11/11 PASSED)
+   - `test/location_capture_test.dart` (14/14 PASSED)
+   - `test/emergency_reporting_test.dart` (7/7 PASSED)
+   - `test/emergency_snapshot_test.dart` (4/4 PASSED)
+   - `test/vulnerability_profile_test.dart` (4/4 PASSED)
+3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/ -v` -> **13/13 PASSED in 2.02s**.
+4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 388ms**.
+
+---
+
+# T058 — Implement Automatic Pending-Queue Synchronization
+
+## Completed Work
+- **Automatic Sync Orchestrator in `OfflineService`** (`flutter-frontend/lib/services/offline_service.dart`):
+  - Added transition listener monitoring `ConnectivityService` state changes (`oldState != ConnectivityState.online && state == ConnectivityState.online`).
+  - Added `_triggerAutomaticSync()` to schedule background draining in a microtask when transitioning to `ONLINE`.
+  - Added `autoSync: bool` configuration (defaults to `true`), with support for disabling in isolated tests.
+  - Implemented `isSyncing` concurrency protection lock ensuring parallel sync runs are blocked; repeated `ONLINE` notifications while sync is active are ignored without spawning duplicate HTTP requests.
+  - Implemented `waitForSync()` using an internal `Completer<void>` tracking `_currentSyncFuture` to allow deterministic async awaiting in both production and test harnesses.
+  - Preserved manual sync `syncPendingQueue({http.Client? client})` sharing the exact same concurrency lock and `SyncService` engine.
+  - Updated `submitEmergency()` to cleanly record `local_id` on offline-queued emergency payloads.
+  - Added resource-safe disposal cancelling `_connectivitySubscription` and terminating background tasks.
+- **Single Sync Engine Enhancements in `SyncService`** (`flutter-frontend/lib/services/sync_service.dart`):
+  - Added `static bool isRetryableError(String? error)` classifying 5xx server errors, connection timeouts, and socket/network failures as retryable (`true`), and validation (400, 422), conflicts (409), and corrupted payloads as non-retryable (`false`).
+  - Implemented `preparePendingQueueForSync()`: resets orphaned `IN_FLIGHT` operations and retryable `FAILED` operations back to `PENDING` before synchronization begins, while preserving non-retryable failed operations in `FAILED` state to prevent endless retry loops.
+  - In `syncAllPending()`: drains `getPendingOperations()` in strict FIFO order (`createdAt ASC, id ASC`); breaks loop early upon `SyncStatus.networkFailure` to preserve remaining queue items as clean `PENDING` state for subsequent reconnection.
+  - Added dependency injection support for `defaultClient` via constructor and `setDefaultHttpClient(http.Client? client)`.
+- **Backend Thread-Safe Idempotency Protection** (`backend/app/repositories/crud.py`):
+  - Protected `create_emergency()` with `_emergency_creation_lock = threading.Lock()` to eliminate SQLite multi-threaded collision race conditions during concurrent emergency creation with idempotency keys.
+- **Automatic Synchronization Test Suite** (`flutter-frontend/test/automatic_sync_test.dart`):
+  - Created 16 comprehensive unit and integration tests covering:
+    1. Transition from OFFLINE to ONLINE automatically triggers queue synchronization.
+    2. Transition from INTERMITTENT to ONLINE automatically triggers queue synchronization.
+    3. Remaining in OFFLINE does not trigger synchronization.
+    4. Remaining in INTERMITTENT does not trigger synchronization.
+    5. Transition from ONLINE to OFFLINE to ONLINE triggers synchronization only upon reaching ONLINE.
+    6. Repeated ONLINE notifications do not trigger concurrent sync executions.
+    7. Synchronization processes pending operations in strict FIFO order.
+    8. Successful synchronization updates local database record to COMPLETED / authoritative ID.
+    9. Transient network failure during auto-sync leaves operation retryable.
+    10. Permanent validation failure during auto-sync marks operation non-retryable and does not block subsequent cycles.
+    11. 409 conflict resolves idempotently to non-retryable failure without mutating local record.
+    12. Partial queue success: failure of one operation does not corrupt or drop subsequent operations.
+    13. Existing local emergency data remains in SQLite after failed auto-sync.
+    14. Vulnerability snapshot remains intact after auto-sync.
+    15. Manual sync (syncPendingQueue) still works and shares concurrency lock with auto-sync.
+    16. Safe disposal of OfflineService and ConnectivityService stops background listening without leaks or errors.
+- **Main App Widget Smoke Test** (`flutter-frontend/test/widget_test.dart`):
+  - Updated legacy test to verify `DrishtiApp` widget hierarchy builds cleanly with `OfflineService`.
+
+## Verification Summary
+1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 3.0s)** (0 errors, 0 warnings, 0 infos).
+2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **152/152 tests PASSED** across all 14 test suites:
+   - `test/automatic_sync_test.dart` (16/16 PASSED)
+   - `test/widget_test.dart` (1/1 PASSED)
+   - `test/pending_sync_status_test.dart` (5/5 PASSED)
+   - `test/idempotent_sync_test.dart` (6/6 PASSED)
+   - `test/sync_service_test.dart` (21/21 PASSED)
+   - `test/connectivity_service_test.dart` (13/13 PASSED)
+   - `test/pending_operation_queue_test.dart` (14/14 PASSED)
+   - `test/local_emergency_repository_test.dart` (14/14 PASSED)
+   - `test/database_test.dart` (10/10 PASSED)
+   - `test/validation_and_error_states_test.dart` (12/12 PASSED)
+   - `test/emergency_tracking_test.dart` (11/11 PASSED)
+   - `test/location_capture_test.dart` (14/14 PASSED)
+   - `test/emergency_reporting_test.dart` (7/7 PASSED)
+   - `test/emergency_snapshot_test.dart` (4/4 PASSED)
+   - `test/vulnerability_profile_test.dart` (4/4 PASSED)
+3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/ -v` -> **13/13 PASSED in 2.26s**.
+4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 438ms**.
+
+---
+
+# T060 — Test Offline → Online Synchronization
+
+## Completed Work
+- **Capstone End-to-End Integration Test Suite** (`flutter-frontend/test/offline_to_online_sync_test.dart`):
+  - Created 10 comprehensive, automated end-to-end integration and scenario tests validating the complete offline-first DRISHTI emergency pipeline:
+    1. **Full End-to-End Lifecycle**: Citizen creates emergency while offline -> Local SQLite record created with `PENDING` state and UUID -> Network transitions to `ONLINE` -> Auto-sync triggers -> Server receives payload with frozen vulnerability snapshot -> Server reconciles authoritative ID (`E101-AUTH`) -> Local SQLite updated to `COMPLETED` -> Authoritative tracking status fetched and verified.
+    2. **Intermittent Flapping Network**: Offline service buffers multiple sequential incidents during disconnected/intermittent conditions (`offline` -> `intermittent` -> `offline`) without leaking or attempting network calls; full queue drains automatically upon reaching stable `online`.
+    3. **Manual Trigger Parity**: User-initiated "Sync Now" (`syncPendingQueue`) shares atomic synchronization lock with background automatic listener, prevents duplicate HTTP calls, and drains queue identically.
+    4. **Vulnerability Snapshot Immutability**: Citizen modifies vulnerability profile traits (e.g. changes mobility status, medical conditions) after submitting an offline emergency; upon reconnecting, the server receives the exact immutable profile snapshot captured at incident creation time.
+    5. **Cold Boot Simulation**: Complete process shutdown and cold restart simulation with new `OfflineService` instance; un-synced operations persist in local SQLite and auto-sync immediately drains them once network is established.
+    6. **Server Idempotency Replay (HTTP 200)**: Re-transmitting an idempotency key reconciles cleanly against existing server record without mutating or duplicating local SQLite rows.
+    7. **Batch Draining with Transient 503 Server Error**: Multi-item queue stops cleanly when a transient 503 server error occurs, keeping remaining items safely queued as retryable `PENDING` for subsequent reconnection cycles.
+    8. **Tracking Fetch Offline vs Online Fallback**: Verifies tracking retrieval works when online, fails gracefully when offline without crashing or corrupting local emergency repository.
+    9. **Zero Data Loss Invariant**: Local SQLite records remain completely intact and unmodified across multiple failed network attempts until positive authoritative acknowledgment from server.
+    10. **UI Widget State Transition**: Verified `HomeScreen` truthful visual state update (sync status banner transitions from "Offline Mode: Queued for sync" with warning orange `#F97316` to "All emergencies synchronized" with success green `#22C55E`) obeying the official DRISHTI color palette.
+- **Service Robustness Improvements** (`flutter-frontend/lib/services/offline_service.dart`):
+  - Made synchronization lock acquisition strictly atomic in `syncPendingQueue()` before entering the first asynchronous operation, preventing race conditions between concurrent sync triggers.
+  - Enhanced HTTP client lifetime management in `fetchEmergencyTracking()` to respect injected/default test clients and avoid premature client disposal.
+
+## Verification Summary
+1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 3.5s)** (0 errors, 0 warnings, 0 infos).
+2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **162/162 tests PASSED** across all 15 test suites:
+   - `test/offline_to_online_sync_test.dart` (10/10 PASSED)
+   - `test/automatic_sync_test.dart` (16/16 PASSED)
+   - `test/widget_test.dart` (1/1 PASSED)
+   - `test/pending_sync_status_test.dart` (5/5 PASSED)
+   - `test/idempotent_sync_test.dart` (6/6 PASSED)
+   - `test/sync_service_test.dart` (21/21 PASSED)
+   - `test/connectivity_service_test.dart` (13/13 PASSED)
+   - `test/pending_operation_queue_test.dart` (14/14 PASSED)
+   - `test/local_emergency_repository_test.dart` (14/14 PASSED)
+   - `test/database_test.dart` (10/10 PASSED)
+   - `test/validation_and_error_states_test.dart` (12/12 PASSED)
+   - `test/emergency_tracking_test.dart` (11/11 PASSED)
+   - `test/location_capture_test.dart` (14/14 PASSED)
+   - `test/emergency_reporting_test.dart` (7/7 PASSED)
+   - `test/emergency_snapshot_test.dart` (4/4 PASSED)
+   - `test/vulnerability_profile_test.dart` (4/4 PASSED)
+3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/ -v` -> **13/13 PASSED in 2.22s**.
+4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 494ms**.
+
+---
+
+# Phase 6 Enhancement — Citizen Basic Details & Profile Persistence
+
+## Completed Work
+- **Strongly Typed Citizen Profile Model** (`flutter-frontend/lib/models/citizen_profile.dart`):
+  - Created `CitizenProfile` data model containing `fullName`, `phoneNumber`, `email`, `age`, `gender`, `address`, `city`, `emergencyContactName`, `emergencyContactPhone`, and `status`.
+  - Added deterministic static validation methods:
+    - `validateFullName`: Non-empty, 2–100 characters.
+    - `validatePhoneNumber`: Required, 8–15 digits, supports international and domestic formatting.
+    - `validateEmail`: Optional, requires valid email pattern if provided.
+    - `validateEmergencyPhone`: Optional, 8–15 digits if provided.
+  - Implemented `validate()`, `toJson()`, `toPersistenceJson()`, `fromJson()`, `copyWith()`, `defaultProfile()`, and `empty()`.
+  - Clean separation of completion states: Basic Profile (`incomplete` vs `complete`) is clearly distinguished from Vulnerability Profile status (`notCompleted`, `defaultProfile`, `completed`). A user skipping vulnerability setup still possesses a complete basic profile.
+- **OfflineService Persistence & Separation Invariant** (`flutter-frontend/lib/services/offline_service.dart`):
+  - Added `_userCitizenProfile` state with reactive getters `citizenProfile` and `isBasicProfileComplete`.
+  - Implemented `saveCitizenProfile(profile, {client})` persisting to `SharedPreferences('citizen_profile')` for survivor restarts across app sessions.
+  - When online, automatically synchronizes citizen profile to backend via `PUT /api/v1/profile/{user_id}`; if offline/unreachable, gracefully defers without throwing unhandled exceptions.
+  - Updated `_loadLocalData()` to restore both citizen and vulnerability profiles on application launch.
+  - **ADR-008 Invariant Preservation**: In `submitEmergency()`, `reporter_name` and `contact_phone` are placed at the root level of the emergency payload, while `vulnerability_snapshot` remains strictly isolated with vulnerability heuristics only.
+  - Backward compatibility: Existing tests without explicit citizen details continue to pass by defaulting `_userCitizenProfile` cleanly.
+- **Two-Step Onboarding Flow** (`flutter-frontend/lib/screens/onboarding_screen.dart`):
+  - Re-architected into an accessible two-step flow:
+    - **Step 1 (Citizen Details)**: Collects full name, phone number, optional email, city, address, and emergency contact information with live form validation.
+    - **Step 2 (Vulnerability Profile)**: Collects operational dispatch heuristics (age slider, swimming ability, mobility status, medical conditions, disability notes) alongside the mandatory Educational Disclaimer Card.
+  - Supports "Skip Vulnerability Info" to persist complete basic details with standard default vulnerability values.
+- **Dedicated Profile Screen** (`flutter-frontend/lib/screens/profile_screen.dart`):
+  - Displays 4 distinct, clearly demarcated sections:
+    1. *Basic Information* (Full Name, Phone, Email)
+    2. *Location & Personal Details* (City, Gender, Address)
+    3. *Emergency Contact* (Contact Name, Contact Phone)
+    4. *Vulnerability Profile (Disaster Dispatch)* (Isolated heuristics with educational notice)
+  - Allows editing and saving with immediate local persistence and background server synchronization.
+- **Personalized Home Screen** (`flutter-frontend/lib/screens/home_screen.dart`):
+  - Dynamic top bar greeting: `"Hi, <FirstName>"`.
+  - Upgraded Profile Summary Card displaying citizen full name, phone number, and city above the vulnerability badges.
+- **Emergency Models & Schema Extensions**:
+  - `flutter-frontend/lib/models/emergency_tracking.dart` & `emergency_report.dart`: Added `reporterName` and `contactPhone` fields with serialization/deserialization.
+  - `backend/app/models/domain.py`: Extended `User` model (`phone`, `gender`, `address`, `city`, `emergency_contact_name`, `emergency_contact_phone`) with `email` nullable to support phone-registered citizens. Extended `Emergency` model (`reporter_name`, `contact_phone`).
+  - `backend/app/schemas/domain.py` & `schemas/__init__.py`: Added `CitizenProfileUpdate` and `CitizenProfileResponse` with Pydantic field validators. Added `reporter_name` and `contact_phone` to `EmergencyCreate` and `EmergencyResponse`.
+  - `backend/app/repositories/crud.py`: Added `get_citizen_profile(db, user_id)` and `update_citizen_profile(db, user_id, profile_in)`. Updated `create_emergency()` to attach reporter details.
+  - `backend/app/api/v1/profile.py` (NEW): Implemented `GET /api/v1/profile/{user_id}` and `PUT /api/v1/profile/{user_id}`.
+  - `backend/app/api/v1/__init__.py`: Registered `profile_router`.
+- **Test Suites**:
+  - `flutter-frontend/test/citizen_profile_test.dart` (NEW): 16 comprehensive unit and widget tests covering models, validation, persistence across simulated restarts, snapshot isolation, backend sync, and UI flows.
+  - `backend/app/tests/test_profile_api.py` (NEW): 6 tests covering 404 handling, profile CRUD, input validation, user isolation, and emergency reporter/snapshot isolation.
+
+## Verification Summary
+1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 3.5s)** (0 errors, 0 warnings, 0 infos).
+2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **178/178 tests PASSED** across all 16 test suites:
+   - `test/citizen_profile_test.dart` (16/16 PASSED)
+   - `test/offline_to_online_sync_test.dart` (10/10 PASSED)
+   - `test/automatic_sync_test.dart` (16/16 PASSED)
+   - `test/widget_test.dart` (1/1 PASSED)
+   - `test/pending_sync_status_test.dart` (5/5 PASSED)
+   - `test/idempotent_sync_test.dart` (6/6 PASSED)
+   - `test/sync_service_test.dart` (21/21 PASSED)
+   - `test/connectivity_service_test.dart` (13/13 PASSED)
+   - `test/pending_operation_queue_test.dart` (14/14 PASSED)
+   - `test/local_emergency_repository_test.dart` (14/14 PASSED)
+   - `test/database_test.dart` (10/10 PASSED)
+   - `test/validation_and_error_states_test.dart` (12/12 PASSED)
+   - `test/emergency_tracking_test.dart` (11/11 PASSED)
+   - `test/location_capture_test.dart` (14/14 PASSED)
+   - `test/emergency_reporting_test.dart` (7/7 PASSED)
+   - `test/emergency_snapshot_test.dart` (4/4 PASSED)
+   - `test/vulnerability_profile_test.dart` (4/4 PASSED)
+3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/ -v` -> **19/19 PASSED in 1.98s**.
+4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 16.61s**.
+
+
+
+
 
 
 
