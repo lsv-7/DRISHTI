@@ -1,65 +1,74 @@
-# Walkthrough — Implementation of T059 in DRISHTI AI
+# Walkthrough — Implementation of T058 (Automatic Pending-Queue Synchronization) in DRISHTI AI
 
-Successfully implemented and verified **T059** (Show Local Pending/Sync Status in Flutter with DRISHTI Design System) in accordance with the official mockup reference, design specifications, and architecture rules.
+Successfully implemented and verified **T058** (Automatic Pending-Queue Synchronization) in accordance with the system architecture rules and specifications.
 
 ---
 
 ## 1. What was Implemented
 
-### DRISHTI Color Palette & UI Design System
-- **Centralized Palette & Theme System** ([`flutter-frontend/lib/theme/drishti_theme.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/theme/drishti_theme.dart)):
-  - Strictly codified exact hex values from mockup `media_1789789799590.jpg`:
-    - **Primary Brand**: `#2563EB` (Primary Blue), `#1E3A8A` (Deep Navy), `#0F172A` (Dark Navy Text).
-    - **Emergency / Alert**: `#EF4444` (Emergency Red), `#F97316` (Warning Orange), `#FBBF24` (Alert Yellow).
-    - **Success / Safety**: `#22C55E` (Success Green), `#DCFCE7` (Soft Green).
-    - **Supporting**: `#DBEAFE` (Light Blue), `#8B5CF6` (Purple Accent).
-    - **Neutrals**: `#F8FAFC` (Background), `#FFFFFF` (Surface), `#E2E8F0` (Border), `#64748B` (Secondary Text).
-    - **Semantic Light Tints**: `#FEE2E2` (Medical / SOS), `#FED7AA` (Fire / Warning), `#EDE9FE` (Missing / Accent), `#FEF3C7` (Alert / Pending), `#F1F5F9` (Neutral Light).
-  - Defined `DrishtiTheme.lightTheme` with comprehensive ThemeData and button/card/input styles.
+### Automatic Triggering on Truthful Online Transition
+- **Connectivity Listener** ([`flutter-frontend/lib/services/offline_service.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/services/offline_service.dart)):
+  - Listens to `ConnectivityService.onConnectivityChanged` stream.
+  - Automatically triggers synchronization when transitioning from a non-online state (`OFFLINE` or `INTERMITTENT`) to `ONLINE`.
+  - Stays dormant when remaining `OFFLINE` or `INTERMITTENT`.
+  - Does NOT auto-trigger on startup unless an explicit transition to `ONLINE` occurs.
 
-### Truthful Local Pending & Offline Sync Status (T059)
-- **Home Screen Dashboard** ([`flutter-frontend/lib/screens/home_screen.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/screens/home_screen.dart)):
-  - **2x2 Hero Action Grid** matching Mockup Screen 4:
-    - *SOS Emergency*: Medical Light Red (`#FEE2E2` / `#EF4444`).
-    - *Request Help*: Light Blue (`#DBEAFE` / `#2563EB`).
-    - *Report Missing Person*: Light Purple (`#EDE9FE` / `#8B5CF6`).
-    - *Find Shelter Nearby*: Soft Green (`#DCFCE7` / `#22C55E`).
-  - **Offline Mode Checklist** matching Mockup Screens 7 & 8:
-    - Displays "You're Offline" badge with red disconnected icon.
-    - 3-point status checklist: "Request saved locally", "Stored in offline queue (X Pending)", and "Will sync automatically when connection returns".
-  - **Online Queue & Sync Status**:
-    - Status indicator badge (PENDING in `#FBBF24`, SYNCED in `#22C55E`, FAILED in `#EF4444`).
-    - "Sync Now" button when online with queued operations.
-    - Warning banner when `lastSyncError` is present.
+### Single Synchronization Engine & Strict FIFO Order
+- **Queue Draining Engine** ([`flutter-frontend/lib/services/sync_service.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/services/sync_service.dart)):
+  - Both automatic sync and manual sync (`syncPendingQueue`) delegate directly to `SyncService.syncAllPending()`.
+  - Pending operations are processed in strict deterministic FIFO order (`createdAt ASC, id ASC`).
+  - Halts processing upon network transport failure to preserve remaining operations as cleanly `PENDING`.
 
-### Application-Wide Screen Restyling
-- [`flutter-frontend/lib/main.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/main.dart): Configured with `DrishtiTheme.lightTheme`.
-- [`flutter-frontend/lib/widgets/educational_disclaimer_card.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/widgets/educational_disclaimer_card.dart): Light blue styling with navy text and primary blue badge.
-- [`flutter-frontend/lib/screens/emergency_reporting_screen.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/screens/emergency_reporting_screen.dart): Light theme, sector selection modal, responsive emergency submit button.
-- [`flutter-frontend/lib/screens/emergency_confirmation_screen.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/screens/emergency_confirmation_screen.dart): Distinct confirmation for online vs offline local save.
-- [`flutter-frontend/lib/screens/emergency_tracking_screen.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/screens/emergency_tracking_screen.dart): Incident status progression timeline, 404 card, and cached offline state warnings.
-- [`flutter-frontend/lib/screens/onboarding_screen.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/screens/onboarding_screen.dart) & [`flutter-frontend/lib/screens/profile_screen.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/lib/screens/profile_screen.dart): Age steppers, swimming ability cards, mobility chips, and medical conditions chips restyled with the DRISHTI light theme palette.
+### Concurrency Protection & Non-Overlapping Execution
+- **Mutual Exclusion Lock**:
+  - `_isSyncing` guard in `OfflineService` ensures that only one synchronization process runs at any time.
+  - Repeated `ONLINE` notifications or bursts of network interface updates while sync is active are ignored without spawning concurrent workers or duplicate HTTP requests.
+  - `waitForSync()` provides a deterministic synchronization primitive tracking background futures via internal `Completer<void>`.
 
-### Automated Test Suite
-- [`flutter-frontend/test/pending_sync_status_test.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/test/pending_sync_status_test.dart): 5 automated widget tests verifying synchronized state rendering, offline checklist rendering, "Sync Now" button rendering and behavior, error warning display, and color palette invariants.
+### Error Classification & Intelligent Retry Handling
+- **Retryable vs Non-Retryable Error Classification**:
+  - `SyncService.isRetryableError(error)` classifies 5xx server errors, socket disconnects, and connection timeouts as retryable (`true`).
+  - Validation failures (400, 422), idempotency conflicts (409), and corrupted data are classified as non-retryable (`false`).
+  - `preparePendingQueueForSync()` resets retryable failures and stuck `IN_FLIGHT` operations back to `PENDING` prior to draining.
+  - Non-retryable failed operations remain marked `FAILED` in SQLite and are NOT endlessly retried in subsequent cycles.
+
+### Local Data Integrity & Immutable Snapshots
+- Local SQLite emergency records remain permanently intact in the Drift database regardless of sync outcomes, ensuring zero data loss during disaster scenarios.
+- The original `idempotency_key` and frozen `vulnerability_snapshot` are strictly preserved across sync attempts and user profile updates.
+
+### Backend Multi-Threaded Concurrency Guard
+- [`backend/app/repositories/crud.py`](file:///c:/Users/wwwlo/Downloads/DRISHTI/backend/app/repositories/crud.py): Added `_emergency_creation_lock = threading.Lock()` ensuring that concurrent duplicate requests with identical idempotency keys never race in SQLite.
 
 ---
 
-## 2. Test & Build Verification Results
+## 2. Automated Test Verification
 
-### 1. Flutter Code Analysis
-```bash
-cd flutter-frontend
-flutter analyze
-```
-**Result**: `No issues found! (ran in 2.2s)` (0 errors, 0 warnings, 0 linter issues).
+### Flutter Test Suites (14 Suites, 152 Tests)
+Created comprehensive unit and integration suite in [`flutter-frontend/test/automatic_sync_test.dart`](file:///c:/Users/wwwlo/Downloads/DRISHTI/flutter-frontend/test/automatic_sync_test.dart) covering all 16 specified requirements:
+1. Transition from OFFLINE to ONLINE automatically triggers queue synchronization.
+2. Transition from INTERMITTENT to ONLINE automatically triggers queue synchronization.
+3. Remaining in OFFLINE does not trigger synchronization.
+4. Remaining in INTERMITTENT does not trigger synchronization.
+5. Transition from ONLINE to OFFLINE to ONLINE triggers synchronization only upon reaching ONLINE.
+6. Repeated ONLINE notifications do not trigger concurrent sync executions.
+7. Synchronization processes pending operations in strict FIFO order.
+8. Successful synchronization updates local database record to COMPLETED / authoritative ID.
+9. Transient network failure during auto-sync leaves operation retryable.
+10. Permanent validation failure during auto-sync marks operation non-retryable and does not block subsequent cycles.
+11. 409 conflict resolves idempotently to non-retryable failure without mutating local record.
+12. Partial queue success: failure of one operation does not corrupt or drop subsequent operations.
+13. Existing local emergency data remains in SQLite after failed auto-sync.
+14. Vulnerability snapshot remains intact after auto-sync.
+15. Manual sync (syncPendingQueue) still works and shares concurrency lock with auto-sync.
+16. Safe disposal of OfflineService and ConnectivityService stops background listening without leaks or errors.
 
-### 2. Flutter Unit & Integration Test Suite
 ```bash
 cd flutter-frontend
 flutter test
 ```
-**Result**: **135/135 PASSED (0.06s)** across all 13 test suites:
+**Result**: **152/152 tests PASSED** across all 14 test suites:
+- `test/automatic_sync_test.dart` (16/16 PASSED)
+- `test/widget_test.dart` (1/1 PASSED)
 - `test/pending_sync_status_test.dart` (5/5 PASSED)
 - `test/idempotent_sync_test.dart` (6/6 PASSED)
 - `test/sync_service_test.dart` (21/21 PASSED)
@@ -74,23 +83,29 @@ flutter test
 - `test/emergency_snapshot_test.dart` (4/4 PASSED)
 - `test/vulnerability_profile_test.dart` (4/4 PASSED)
 
-### 3. Backend Test Suite Verification
+### Static Analysis
+```bash
+cd flutter-frontend
+flutter analyze
+```
+**Result**: **No issues found! (ran in 3.0s)** (0 errors, 0 warnings, 0 infos).
+
+### Backend Pytest Verification
 ```bash
 cd backend
 py -3.14 -m pytest app/tests/ -v
 ```
-**Result**: **13/13 PASSED in 2.02s** (decision engine + idempotency tests).
+**Result**: **13/13 PASSED in 2.26s** (decision engine + idempotency tests).
 
-### 4. Web Command Center Production Build Verification
+### Web Frontend Build Verification
 ```bash
 cd frontend
 npm run build
 ```
-**Result**: **SUCCESSFUL BUILD in 388ms** (`dist/` generated with zero errors).
+**Result**: **SUCCESSFUL BUILD in 438ms** (`dist/` generated cleanly).
 
 ---
 
-## 3. Updated Task History
-
-- `.antigravity/tasks/Tasks.MD`: Marked `T059` as completed `[x]`.
-- `.antigravity/tasks/TasksCompleted.MD`: Appended full implementation and verification record for `T059`.
+## 3. Updated Documentation
+- `.antigravity/tasks/Tasks.MD`: Marked `T058` as completed `[x]`.
+- `.antigravity/tasks/TasksCompleted.MD`: Appended full implementation and verification record for `T058`.

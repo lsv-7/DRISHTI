@@ -757,6 +757,70 @@ Date: 2026-09-19
 3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/ -v` -> **13/13 PASSED in 2.02s**.
 4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 388ms**.
 
+---
+
+# T058 — Implement Automatic Pending-Queue Synchronization
+
+## Completed Work
+- **Automatic Sync Orchestrator in `OfflineService`** (`flutter-frontend/lib/services/offline_service.dart`):
+  - Added transition listener monitoring `ConnectivityService` state changes (`oldState != ConnectivityState.online && state == ConnectivityState.online`).
+  - Added `_triggerAutomaticSync()` to schedule background draining in a microtask when transitioning to `ONLINE`.
+  - Added `autoSync: bool` configuration (defaults to `true`), with support for disabling in isolated tests.
+  - Implemented `isSyncing` concurrency protection lock ensuring parallel sync runs are blocked; repeated `ONLINE` notifications while sync is active are ignored without spawning duplicate HTTP requests.
+  - Implemented `waitForSync()` using an internal `Completer<void>` tracking `_currentSyncFuture` to allow deterministic async awaiting in both production and test harnesses.
+  - Preserved manual sync `syncPendingQueue({http.Client? client})` sharing the exact same concurrency lock and `SyncService` engine.
+  - Updated `submitEmergency()` to cleanly record `local_id` on offline-queued emergency payloads.
+  - Added resource-safe disposal cancelling `_connectivitySubscription` and terminating background tasks.
+- **Single Sync Engine Enhancements in `SyncService`** (`flutter-frontend/lib/services/sync_service.dart`):
+  - Added `static bool isRetryableError(String? error)` classifying 5xx server errors, connection timeouts, and socket/network failures as retryable (`true`), and validation (400, 422), conflicts (409), and corrupted payloads as non-retryable (`false`).
+  - Implemented `preparePendingQueueForSync()`: resets orphaned `IN_FLIGHT` operations and retryable `FAILED` operations back to `PENDING` before synchronization begins, while preserving non-retryable failed operations in `FAILED` state to prevent endless retry loops.
+  - In `syncAllPending()`: drains `getPendingOperations()` in strict FIFO order (`createdAt ASC, id ASC`); breaks loop early upon `SyncStatus.networkFailure` to preserve remaining queue items as clean `PENDING` state for subsequent reconnection.
+  - Added dependency injection support for `defaultClient` via constructor and `setDefaultHttpClient(http.Client? client)`.
+- **Backend Thread-Safe Idempotency Protection** (`backend/app/repositories/crud.py`):
+  - Protected `create_emergency()` with `_emergency_creation_lock = threading.Lock()` to eliminate SQLite multi-threaded collision race conditions during concurrent emergency creation with idempotency keys.
+- **Automatic Synchronization Test Suite** (`flutter-frontend/test/automatic_sync_test.dart`):
+  - Created 16 comprehensive unit and integration tests covering:
+    1. Transition from OFFLINE to ONLINE automatically triggers queue synchronization.
+    2. Transition from INTERMITTENT to ONLINE automatically triggers queue synchronization.
+    3. Remaining in OFFLINE does not trigger synchronization.
+    4. Remaining in INTERMITTENT does not trigger synchronization.
+    5. Transition from ONLINE to OFFLINE to ONLINE triggers synchronization only upon reaching ONLINE.
+    6. Repeated ONLINE notifications do not trigger concurrent sync executions.
+    7. Synchronization processes pending operations in strict FIFO order.
+    8. Successful synchronization updates local database record to COMPLETED / authoritative ID.
+    9. Transient network failure during auto-sync leaves operation retryable.
+    10. Permanent validation failure during auto-sync marks operation non-retryable and does not block subsequent cycles.
+    11. 409 conflict resolves idempotently to non-retryable failure without mutating local record.
+    12. Partial queue success: failure of one operation does not corrupt or drop subsequent operations.
+    13. Existing local emergency data remains in SQLite after failed auto-sync.
+    14. Vulnerability snapshot remains intact after auto-sync.
+    15. Manual sync (syncPendingQueue) still works and shares concurrency lock with auto-sync.
+    16. Safe disposal of OfflineService and ConnectivityService stops background listening without leaks or errors.
+- **Main App Widget Smoke Test** (`flutter-frontend/test/widget_test.dart`):
+  - Updated legacy test to verify `DrishtiApp` widget hierarchy builds cleanly with `OfflineService`.
+
+## Verification Summary
+1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 3.0s)** (0 errors, 0 warnings, 0 infos).
+2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **152/152 tests PASSED** across all 14 test suites:
+   - `test/automatic_sync_test.dart` (16/16 PASSED)
+   - `test/widget_test.dart` (1/1 PASSED)
+   - `test/pending_sync_status_test.dart` (5/5 PASSED)
+   - `test/idempotent_sync_test.dart` (6/6 PASSED)
+   - `test/sync_service_test.dart` (21/21 PASSED)
+   - `test/connectivity_service_test.dart` (13/13 PASSED)
+   - `test/pending_operation_queue_test.dart` (14/14 PASSED)
+   - `test/local_emergency_repository_test.dart` (14/14 PASSED)
+   - `test/database_test.dart` (10/10 PASSED)
+   - `test/validation_and_error_states_test.dart` (12/12 PASSED)
+   - `test/emergency_tracking_test.dart` (11/11 PASSED)
+   - `test/location_capture_test.dart` (14/14 PASSED)
+   - `test/emergency_reporting_test.dart` (7/7 PASSED)
+   - `test/emergency_snapshot_test.dart` (4/4 PASSED)
+   - `test/vulnerability_profile_test.dart` (4/4 PASSED)
+3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/ -v` -> **13/13 PASSED in 2.26s**.
+4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 438ms**.
+
+
 
 
 

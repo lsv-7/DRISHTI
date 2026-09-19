@@ -1,4 +1,5 @@
 import uuid
+import threading
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -173,63 +174,13 @@ def _is_payload_equivalent(existing: Emergency, e_in: EmergencyCreate) -> bool:
     return True
 
 
+_emergency_creation_lock = threading.Lock()
+
+
 # --- EMERGENCY REPOSITORY ---
 def create_emergency(db: Session, e_in: EmergencyCreate, user_id: Optional[str] = None) -> Emergency:
-    # 1. Check idempotency key if provided
-    if e_in.idempotency_key:
-        existing = db.query(Emergency).filter(Emergency.idempotency_key == e_in.idempotency_key).first()
-        if existing:
-            if not _is_payload_equivalent(existing, e_in):
-                raise IdempotencyConflictError(
-                    f"Idempotency key conflict: key '{e_in.idempotency_key}' is already associated with an emergency with different attributes."
-                )
-            existing._is_new = False
-            return existing
-
-    # Resolve disaster zone
-    zones = [
-        {"id": z.id, "name": z.name, "geometry_geojson": z.geometry_geojson, "is_active": z.is_active}
-        for z in db.query(DisasterZone).filter(DisasterZone.is_active == True).all()
-    ]
-    resolved_zone = resolve_disaster_zone(e_in.latitude, e_in.longitude, zones)
-    zone_id = resolved_zone["id"] if resolved_zone else None
-
-    # Calculate Priority & Vulnerability
-    v_dict = e_in.vulnerability_snapshot.model_dump() if e_in.vulnerability_snapshot else None
-    priority_score, priority_level, priority_reasons, v_score, v_factors = calculate_priority_score(
-        category=e_in.category,
-        affected_count=e_in.affected_count,
-        vulnerability_snapshot=v_dict
-    )
-
-    emergency = Emergency(
-        id=f"emg_{uuid.uuid4().hex[:12]}",
-        user_id=user_id,
-        zone_id=zone_id,
-        title=e_in.title,
-        description=e_in.description,
-        category=e_in.category,
-        latitude=e_in.latitude,
-        longitude=e_in.longitude,
-        status=EmergencyStatus.PENDING,
-        priority_score=priority_score,
-        priority_level=PriorityLevel(priority_level),
-        priority_reasons=priority_reasons,
-        vulnerability_score=v_score,
-        vulnerability_factors=v_factors,
-        vulnerability_snapshot=v_dict,
-        affected_count=e_in.affected_count,
-        idempotency_key=e_in.idempotency_key
-    )
-
-    try:
-        db.add(emergency)
-        db.commit()
-        db.refresh(emergency)
-        emergency._is_new = True
-        return emergency
-    except IntegrityError:
-        db.rollback()
+    with _emergency_creation_lock:
+        # 1. Check idempotency key if provided
         if e_in.idempotency_key:
             existing = db.query(Emergency).filter(Emergency.idempotency_key == e_in.idempotency_key).first()
             if existing:
@@ -239,7 +190,61 @@ def create_emergency(db: Session, e_in: EmergencyCreate, user_id: Optional[str] 
                     )
                 existing._is_new = False
                 return existing
-        raise
+
+        # Resolve disaster zone
+        zones = [
+            {"id": z.id, "name": z.name, "geometry_geojson": z.geometry_geojson, "is_active": z.is_active}
+            for z in db.query(DisasterZone).filter(DisasterZone.is_active == True).all()
+        ]
+        resolved_zone = resolve_disaster_zone(e_in.latitude, e_in.longitude, zones)
+        zone_id = resolved_zone["id"] if resolved_zone else None
+
+        # Calculate Priority & Vulnerability
+        v_dict = e_in.vulnerability_snapshot.model_dump() if e_in.vulnerability_snapshot else None
+        priority_score, priority_level, priority_reasons, v_score, v_factors = calculate_priority_score(
+            category=e_in.category,
+            affected_count=e_in.affected_count,
+            vulnerability_snapshot=v_dict
+        )
+
+        emergency = Emergency(
+            id=f"emg_{uuid.uuid4().hex[:12]}",
+            user_id=user_id,
+            zone_id=zone_id,
+            title=e_in.title,
+            description=e_in.description,
+            category=e_in.category,
+            latitude=e_in.latitude,
+            longitude=e_in.longitude,
+            status=EmergencyStatus.PENDING,
+            priority_score=priority_score,
+            priority_level=PriorityLevel(priority_level),
+            priority_reasons=priority_reasons,
+            vulnerability_score=v_score,
+            vulnerability_factors=v_factors,
+            vulnerability_snapshot=v_dict,
+            affected_count=e_in.affected_count,
+            idempotency_key=e_in.idempotency_key
+        )
+
+        try:
+            db.add(emergency)
+            db.commit()
+            db.refresh(emergency)
+            emergency._is_new = True
+            return emergency
+        except Exception:
+            db.rollback()
+            if e_in.idempotency_key:
+                existing = db.query(Emergency).filter(Emergency.idempotency_key == e_in.idempotency_key).first()
+                if existing:
+                    if not _is_payload_equivalent(existing, e_in):
+                        raise IdempotencyConflictError(
+                            f"Idempotency key conflict: key '{e_in.idempotency_key}' is already associated with an emergency with different attributes."
+                        )
+                    existing._is_new = False
+                    return existing
+            raise
 
 
 def get_all_emergencies(db: Session) -> List[Emergency]:
