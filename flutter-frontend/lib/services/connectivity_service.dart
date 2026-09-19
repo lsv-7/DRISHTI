@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
@@ -100,6 +100,11 @@ class ConnectivityService {
 
   /// Reactive broadcast stream emitting state changes only when the value actually changes.
   Stream<ConnectivityState> get onConnectivityChanged => _controller.stream;
+
+  String get healthEndpoint => _healthEndpoint;
+  void setHealthEndpoint(String endpoint) {
+    _healthEndpoint = endpoint;
+  }
 
   ConnectivityService({
     ConnectivityAdapter? adapter,

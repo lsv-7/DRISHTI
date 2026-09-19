@@ -21,6 +21,14 @@ class UserCreate(UserBase):
     password: Optional[str] = None
 
 
+class UserLogin(BaseModel):
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    password: Optional[str] = None
+    full_name: Optional[str] = None
+    role: Optional[str] = "CITIZEN"
+
+
 class UserResponse(UserBase):
     id: str
     created_at: datetime

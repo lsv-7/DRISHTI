@@ -159,17 +159,21 @@ class SyncResult {
 class SyncService {
   final LocalEmergencyRepository repository;
   final PendingOperationQueue queue;
-  final String apiBase;
+  String _apiBase;
+  String get apiBase => _apiBase;
+  void setApiBase(String newBase) {
+    _apiBase = newBase;
+  }
   final Duration timeout;
   http.Client? defaultClient;
 
   SyncService({
     required this.repository,
     required this.queue,
-    this.apiBase = 'http://localhost:3000/api/v1',
+    String apiBase = 'http://localhost:3000/api/v1',
     this.timeout = const Duration(seconds: 5),
     this.defaultClient,
-  });
+  }) : _apiBase = apiBase;
 
   /// Allows setting a default HTTP client (e.g. mock client for unit testing).
   void setDefaultHttpClient(http.Client? client) {

@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import create_access_token, verify_token
-from app.schemas.domain import UserCreate, UserResponse, Token
+from app.schemas.domain import UserCreate, UserLogin, UserResponse, Token
 from app.models.domain import User
 from app.repositories import crud
 
@@ -58,15 +58,23 @@ def register_user(user_in: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-def login_user(user_in: UserCreate, db: Session = Depends(get_db)):
+def login_user(login_in: UserLogin, db: Session = Depends(get_db)):
     user = None
-    if user_in.email:
-        user = crud.get_user_by_email(db, user_in.email)
-    if not user and user_in.phone:
-        user = crud.get_user_by_phone(db, user_in.phone)
+    if login_in.email:
+        user = crud.get_user_by_email(db, login_in.email)
+    if not user and login_in.phone:
+        user = crud.get_user_by_phone(db, login_in.phone)
     if not user:
         # Create demo user on login if missing for seamless UI testing
-        user = crud.create_user(db, user_in)
+        demo_name = login_in.full_name or (login_in.email.split("@")[0].capitalize() if login_in.email else "Citizen User")
+        user_create = UserCreate(
+            email=login_in.email,
+            phone=login_in.phone,
+            full_name=demo_name,
+            role=login_in.role or "CITIZEN",
+            password=login_in.password
+        )
+        user = crud.create_user(db, user_create)
     access_token = create_access_token(data={"sub": user.id, "role": user.role.value})
     return Token(access_token=access_token, user=UserResponse.model_validate(user))
 

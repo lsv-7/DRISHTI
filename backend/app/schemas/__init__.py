@@ -1,5 +1,5 @@
 from app.schemas.domain import (
-    UserBase, UserCreate, UserResponse, Token,
+    UserBase, UserCreate, UserLogin, UserResponse, Token,
     CitizenProfileUpdate, CitizenProfileResponse,
     VulnerabilityProfileBase, VulnerabilityProfileUpdate, VulnerabilityProfileResponse,
     DisasterZoneBase, DisasterZoneCreate, DisasterZoneResponse,
@@ -14,7 +14,7 @@ from app.schemas.domain import (
 )
 
 __all__ = [
-    "UserBase", "UserCreate", "UserResponse", "Token",
+    "UserBase", "UserCreate", "UserLogin", "UserResponse", "Token",
     "CitizenProfileUpdate", "CitizenProfileResponse",
     "VulnerabilityProfileBase", "VulnerabilityProfileUpdate", "VulnerabilityProfileResponse",
     "DisasterZoneBase", "DisasterZoneCreate", "DisasterZoneResponse",
