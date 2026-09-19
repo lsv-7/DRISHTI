@@ -414,18 +414,117 @@ export async function updateEmergencyStatus(id, status) {
   }
 }
 
+// --- PERSISTENT RESOURCE STORAGE & SYNC ---
+const CUSTOM_RESOURCES_KEY = "drishti_custom_resources";
+
+export function getStoredCustomResources() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_RESOURCES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function saveCustomResource(resourceObj) {
+  try {
+    const existing = getStoredCustomResources();
+    const idx = existing.findIndex(r => r.id === resourceObj.id);
+    let updated;
+    if (idx >= 0) {
+      updated = [...existing];
+      updated[idx] = { ...updated[idx], ...resourceObj };
+    } else {
+      updated = [resourceObj, ...existing];
+    }
+    localStorage.setItem(CUSTOM_RESOURCES_KEY, JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event("drishti_resource_updated"));
+    }
+    return updated;
+  } catch (e) {
+    console.error("Failed to save custom resource to localStorage:", e);
+    return [];
+  }
+}
+
 // --- RESOURCES & ASSIGNMENTS ---
 export async function fetchResources() {
+  const custom = getStoredCustomResources();
+  let baseResources = DEFAULT_RESOURCES;
   try {
     const res = await fetch(`${API_BASE}/resources`);
-    const data = await handleResponse(res, "Failed to fetch resources");
-    if (Array.isArray(data)) {
-      return mergeWithDefaults(data, DEFAULT_RESOURCES);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        baseResources = data;
+      }
     }
   } catch (err) {
-    console.warn("fetchResources fallback to demo data:", err);
+    console.warn("fetchResources fallback to merged seed dataset:", err);
   }
-  return DEFAULT_RESOURCES;
+
+  const map = new Map();
+  baseResources.forEach(r => map.set(r.id, r));
+  custom.forEach(r => map.set(r.id, { ...map.get(r.id), ...r }));
+
+  return Array.from(map.values());
+}
+
+export async function createResource(resourceData, origin = 'ORGANIZATION') {
+  const newId = resourceData.id || `RES-${origin === 'MOBILE_FLUTTER' ? 'MOB' : 'ORG'}-${Math.floor(Math.random() * 9000 + 1000)}`;
+  const formattedResource = {
+    id: newId,
+    name: resourceData.name || "Submitted Emergency Resource Asset",
+    resource_type: resourceData.resource_type || "MOBILE_UNIT",
+    capacity: Number(resourceData.capacity || 4),
+    current_load: Number(resourceData.current_load || 0),
+    status: resourceData.status || "AVAILABLE",
+    latitude: Number(resourceData.latitude || 16.5062),
+    longitude: Number(resourceData.longitude || 80.6480),
+    location: resourceData.location || "Vijayawada Central Base",
+    capabilities: Array.isArray(resourceData.capabilities) 
+      ? resourceData.capabilities 
+      : (resourceData.capabilities ? resourceData.capabilities.split(',').map(s => s.trim()) : ["EMERGENCY_RESPONSE"]),
+    source: origin,
+    submitted_at: new Date().toISOString()
+  };
+
+  try {
+    await fetch(`${API_BASE}/resources`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formattedResource)
+    });
+  } catch (err) {
+    console.warn("Backend POST /resources offline, persisted in local storage:", err);
+  }
+
+  saveCustomResource(formattedResource);
+  return formattedResource;
+}
+
+export async function updateResource(resourceId, updates) {
+  const allResources = await fetchResources();
+  const existing = allResources.find(r => r.id === resourceId) || {};
+  const updated = { ...existing, ...updates, id: resourceId };
+
+  try {
+    await fetch(`${API_BASE}/resources/${resourceId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updated)
+    });
+  } catch (err) {
+    console.warn("Backend PUT /resources offline, updated in local storage:", err);
+  }
+
+  saveCustomResource(updated);
+  return updated;
+}
+
+export async function submitMobileResource(mobilePayload) {
+  return createResource(mobilePayload, 'MOBILE_FLUTTER');
 }
 
 export async function fetchMatchingResources(emergencyId) {
@@ -433,11 +532,13 @@ export async function fetchMatchingResources(emergencyId) {
     const res = await fetch(`${API_BASE}/resources/match/${emergencyId}`);
     return await handleResponse(res, "Failed to fetch matching resources");
   } catch (err) {
-    return { emergency_id: emergencyId, matched_resources: DEFAULT_RESOURCES };
+    const all = await fetchResources();
+    return { emergency_id: emergencyId, matched_resources: all };
   }
 }
 
 export async function allocateResource(resourceId, emergencyId) {
+  updateResource(resourceId, { status: "DISPATCHED" });
   try {
     const res = await fetch(`${API_BASE}/resources/allocate`, {
       method: "POST",
@@ -446,8 +547,6 @@ export async function allocateResource(resourceId, emergencyId) {
     });
     return await handleResponse(res, "Failed to allocate resource");
   } catch (err) {
-    const resObj = DEFAULT_RESOURCES.find(r => r.id === resourceId);
-    if (resObj) resObj.status = "DISPATCHED";
     const emgObj = DEFAULT_EMERGENCIES.find(e => e.id === emergencyId);
     if (emgObj) emgObj.status = "ASSIGNED";
 
