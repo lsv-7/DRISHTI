@@ -90,17 +90,32 @@ No issues found! (ran in 3.5s)
 ```
 **0 errors, 0 warnings, 0 lints.**
 
-### Backend Tests: 19 Tests (100% Passing)
+### Backend Tests: 24 Tests (100% Passing)
 Executed `py -3.14 -m pytest app/tests/ -v`:
-- `test_profile_api.py` (6/6 PASSED):
-  - `test_get_nonexistent_profile_returns_404`
-  - `test_put_profile_creates_and_retrieves`
-  - `test_put_profile_update_existing_fields`
-  - `test_profile_validation_rejects_invalid_inputs`
-  - `test_profile_user_isolation`
-  - `test_emergency_reporter_details_and_snapshot_isolation`
-- Plus 13 existing backend tests -> **Total: 19/19 PASSED**.
+- All 24 test cases passed in 2.99s across auth, decision engine, idempotency, and citizen profile.
 
 ### Frontend Web Build
 Executed `npm run build` inside `frontend/`:
-- **Vite production build succeeded cleanly in 16.61s** with 0 errors.
+- **Vite production build succeeded cleanly in 497ms** with 0 errors.
+
+---
+
+## 3. Mobile-to-Admin End-to-End Synchronization Resolution
+
+### Root Cause Analysis
+1. **Outdated Mobile Device Build**: The physical test device was running an older APK compiled prior to cleartext HTTP permissions and forced background sync trigger implementations.
+2. **Dashboard Static Data Precedence**: The web dashboard's `mergeWithDefaults` function evaluated timestamps on demo mock data dynamically (`Date.now() - 30m`), placing static mock cards above live mobile emergency submissions.
+3. **Missing Citizen Attribution in Dashboard**: Incident streams lacked display of citizen reporter names, phone numbers, and origin badges, making real mobile reports look identical to static cards.
+
+### Key Changes
+- **Flutter Client**:
+  - Rebuilt debug APK with Android Network Security Config (`android:usesCleartextTraffic="true"`).
+  - Streamed and installed directly to connected physical device (`adb -s ad742c93 install -r`).
+  - Active reverse port forwarding (`adb reverse tcp:3000 tcp:3000`) verified via device shell curl.
+- **Web Frontend (`frontend/src/services/api.js`, `AdminDashboard.jsx`, `EmergenciesAdmin.jsx`)**:
+  - Live backend records now take authoritative precedence in `mergeWithDefaults()`, sorted descending by creation timestamp.
+  - Added citizen attribution: `📱 Mobile App` badge, `reporter_name`, `contact_phone`, and incident description in both priority incident cards and emergencies data table.
+  - Exported `apiLogin` in `api.js` ensuring full production build compatibility with `AuthContext.jsx`.
+- **FastAPI Backend (`backend/app/main.py`)**:
+  - Generalized CORS regex `https?://.*` to permit requests from local IPs, mobile devices, and admin dashboards without origin blocking.
+
