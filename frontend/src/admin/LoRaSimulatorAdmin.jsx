@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import StatusBadge from '../components/StatusBadge';
-import { Radio, Signal, Battery, Cpu, Activity, RefreshCw, Send, CheckCircle2, AlertTriangle } from 'lucide-react';
+import VijayawadaMap, { VIJAYAWADA_PLACES } from '../components/VijayawadaMap';
+import { Radio, Signal, Battery, Cpu, Activity, RefreshCw, Send, CheckCircle2, AlertTriangle, MapPin, Zap } from 'lucide-react';
 
 export default function LoRaSimulatorAdmin() {
+  const [selectedPlaceId, setSelectedPlaceId] = useState("PRAKASAM");
   const [nodes, setNodes] = useState([
     {
       id: "LORA-NODE-01",
@@ -16,7 +18,8 @@ export default function LoRaSimulatorAdmin() {
       hops: 1,
       status: "ONLINE",
       latitude: 16.5062,
-      longitude: 80.6480
+      longitude: 80.6480,
+      placeId: "PRAKASAM"
     },
     {
       id: "LORA-NODE-02",
@@ -30,7 +33,8 @@ export default function LoRaSimulatorAdmin() {
       hops: 2,
       status: "ONLINE",
       latitude: 16.5120,
-      longitude: 80.6600
+      longitude: 80.6600,
+      placeId: "AUTO_NAGAR"
     },
     {
       id: "LORA-NODE-03",
@@ -44,12 +48,13 @@ export default function LoRaSimulatorAdmin() {
       hops: 1,
       status: "ONLINE",
       latitude: 16.5000,
-      longitude: 80.6550
+      longitude: 80.6550,
+      placeId: "BENZ_CIRCLE"
     },
     {
       id: "LORA-NODE-04",
-      name: "Node-Delta (Kothapeta Mobile Mesh)",
-      location: "Kothapeta Response Van 02",
+      name: "Node-Delta (Bandar Road Mesh)",
+      location: "Bandar Road Low-Lying Sector",
       freq: "868.1 MHz",
       rssi: -112,
       snr: 1.5,
@@ -57,8 +62,9 @@ export default function LoRaSimulatorAdmin() {
       pdr: 88.5,
       hops: 3,
       status: "LIMITED",
-      latitude: 16.5180,
-      longitude: 80.6320
+      latitude: 16.5090,
+      longitude: 80.6380,
+      placeId: "BANDAR_ROAD"
     }
   ]);
 
@@ -85,7 +91,7 @@ export default function LoRaSimulatorAdmin() {
     }
   ]);
 
-  const [txPayload, setTxPayload] = useState("EMERGENCY_RESCUE_REQ: Bandam Road Non-Swimmer Evac");
+  const [txPayload, setTxPayload] = useState("EMERGENCY_RESCUE_REQ: Bandar Road Flood Evac");
   const [broadcastMsg, setBroadcastMsg] = useState('');
 
   const stringToHex = (str) => {
@@ -97,20 +103,21 @@ export default function LoRaSimulatorAdmin() {
   };
 
   const handleSimulateBroadcast = () => {
+    const activePlace = VIJAYAWADA_PLACES.find(p => p.id === selectedPlaceId) || VIJAYAWADA_PLACES[0];
     const newPkt = {
       id: `PKT-${Math.floor(Math.random()*9000 + 1000)}`,
       timestamp: new Date().toLocaleTimeString(),
-      node_id: "LORA-NODE-01",
+      node_id: activePlace.nodeId,
       payload: `0x${stringToHex(txPayload)} (${txPayload})`,
       bytes: txPayload.length,
-      rssi: -87,
-      snr: 8.9,
+      rssi: activePlace.rssi,
+      snr: activePlace.snr,
       status: "DECODED_OK"
     };
 
     setPacketLogs(prev => [newPkt, ...prev]);
-    setBroadcastMsg("Simulated LoRa 868MHz Mesh Packet Broadcasted & Decoded!");
-    setTimeout(() => setBroadcastMsg(''), 4000);
+    setBroadcastMsg(`Simulated LoRa 868MHz Mesh Packet Broadcasted from ${activePlace.name}!`);
+    setTimeout(() => setBroadcastMsg(''), 4500);
   };
 
   const toggleNodeStatus = (id) => {
@@ -133,12 +140,12 @@ export default function LoRaSimulatorAdmin() {
             SOFTWARE-BASED LORA MESH RADIO NETWORK SIMULATOR
           </h2>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-sub)', margin: '0.2rem 0 0 0' }}>
-            Simulated 868MHz Radio Transport • Resilient Offline Mesh Pings & Telemetry Stream
+            Simulated 868MHz Radio Transport • Live 4-Place Vijayawada Mesh Topology & Telemetry
           </p>
         </div>
 
         <button className="btn-primary" onClick={handleSimulateBroadcast}>
-          <Send size={16} /> Simulate Offline LoRa Packet Broadcast
+          <Send size={16} /> Simulate LoRa Packet Broadcast
         </button>
       </div>
 
@@ -149,36 +156,72 @@ export default function LoRaSimulatorAdmin() {
         </div>
       )}
 
+      {/* Embedded Geospatial Leaflet Map Simulation over 4 Places */}
+      <div className="glass-card" style={{ padding: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--navy-deep)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Radio size={18} color="var(--blue-primary)" /> VIJAYAWADA LORA MESH RADIO MAP SIMULATION (4 PLACES)
+          </h3>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-sub)', fontWeight: 600 }}>
+            Click buttons or map nodes to focus simulation target
+          </span>
+        </div>
+
+        <VijayawadaMap
+          externalNodes={nodes}
+          activeSimulationPlace={selectedPlaceId}
+          onSelectPlace={(placeId) => setSelectedPlaceId(placeId)}
+        />
+      </div>
+
       {/* 4 LoRa Mesh Gateway Node Status Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
-        {nodes.map(n => (
-          <div key={n.id} className="glass-card" style={{ padding: '1rem', borderLeft: `4px solid ${n.status === 'ONLINE' ? 'var(--status-safe)' : 'var(--status-critical)'}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-              <div>
-                <strong style={{ fontSize: '0.9rem', color: 'var(--navy-deep)' }}>{n.name}</strong>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-sub)' }}>{n.location}</div>
+        {nodes.map(n => {
+          const isSelected = selectedPlaceId === n.placeId;
+          return (
+            <div
+              key={n.id}
+              className="glass-card"
+              onClick={() => setSelectedPlaceId(n.placeId)}
+              style={{
+                padding: '1rem',
+                borderLeft: `4px solid ${n.status === 'ONLINE' ? 'var(--status-safe)' : 'var(--status-critical)'}`,
+                border: isSelected ? '2px solid var(--blue-primary)' : '1px solid var(--border-color)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                backgroundColor: isSelected ? '#F0F7FF' : '#FFFFFF'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                <div>
+                  <strong style={{ fontSize: '0.9rem', color: 'var(--navy-deep)' }}>{n.name}</strong>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-sub)' }}>{n.location}</div>
+                </div>
+                <StatusBadge status={n.status} />
               </div>
-              <StatusBadge status={n.status} />
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.75rem', marginTop: '0.75rem', backgroundColor: '#F8FAFC', padding: '0.65rem', borderRadius: '6px' }}>
-              <div>RSSI: <strong style={{ color: 'var(--navy-deep)' }}>{n.rssi} dBm</strong></div>
-              <div>SNR: <strong>{n.snr} dB</strong></div>
-              <div>Battery: <strong style={{ color: n.battery < 80 ? 'var(--status-warning)' : 'var(--status-safe)' }}>{n.battery}%</strong></div>
-              <div>PDR: <strong>{n.pdr}%</strong></div>
-            </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.75rem', marginTop: '0.75rem', backgroundColor: isSelected ? '#E2EFFE' : '#F8FAFC', padding: '0.65rem', borderRadius: '6px' }}>
+                <div>RSSI: <strong style={{ color: 'var(--navy-deep)' }}>{n.rssi} dBm</strong></div>
+                <div>SNR: <strong>{n.snr} dB</strong></div>
+                <div>Battery: <strong style={{ color: n.battery < 80 ? 'var(--status-warning)' : 'var(--status-safe)' }}>{n.battery}%</strong></div>
+                <div>PDR: <strong>{n.pdr}%</strong></div>
+              </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-sub)' }}>Freq: {n.freq} • Hops: {n.hops}</span>
-              <button
-                onClick={() => toggleNodeStatus(n.id)}
-                style={{ fontSize: '0.7rem', border: '1px solid var(--border-color)', background: '#FFFFFF', padding: '0.2rem 0.5rem', borderRadius: '4px', cursor: 'pointer' }}
-              >
-                Toggle {n.status === 'ONLINE' ? 'Offline' : 'Online'}
-              </button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-sub)' }}>Freq: {n.freq} • Hops: {n.hops}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleNodeStatus(n.id);
+                  }}
+                  style={{ fontSize: '0.7rem', border: '1px solid var(--border-color)', background: '#FFFFFF', padding: '0.2rem 0.5rem', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  Toggle {n.status === 'ONLINE' ? 'Offline' : 'Online'}
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Broadcast Simulator Form & Live Radio Packet Log */}
