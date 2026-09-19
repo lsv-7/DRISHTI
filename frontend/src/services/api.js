@@ -1,4 +1,24 @@
-const API_BASE = "http://localhost:3000/api/v1";
+export const API_BASE = import.meta.env?.VITE_API_URL || "http://localhost:3000/api/v1";
+
+// Auth Header Helpers
+export function getAuthHeaders(headers = {}) {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem("disaster_response_token") : null;
+  const authHeader = token ? { "Authorization": `Bearer ${token}` } : {};
+  return {
+    "Content-Type": "application/json",
+    ...authHeader,
+    ...headers
+  };
+}
+
+export function getHeaders(headers = {}) {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem("disaster_response_token") : null;
+  const authHeader = token ? { "Authorization": `Bearer ${token}` } : {};
+  return {
+    ...authHeader,
+    ...headers
+  };
+}
 
 // Generic Helper
 async function handleResponse(res, fallbackMessage = "API Error") {
@@ -7,6 +27,30 @@ async function handleResponse(res, fallbackMessage = "API Error") {
     throw new Error(`${fallbackMessage}: ${res.status} ${errorText}`);
   }
   return await res.json();
+}
+
+// Authentication API
+export async function apiLogin(email, password, role = "ADMIN", fullName = null) {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email,
+      password: password || "password",
+      full_name: fullName || (email ? email.split("@")[0].toUpperCase() : "DRISHTI User"),
+      role: role || "ADMIN"
+    })
+  });
+  return await handleResponse(res, "Login failed");
+}
+
+export async function apiGetMe() {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem("disaster_response_token") : null;
+  if (!token) return null;
+  const res = await fetch(`${API_BASE}/auth/me`, {
+    headers: getHeaders()
+  });
+  return await handleResponse(res, "Failed to get user profile");
 }
 
 // Default Seed Datasets
@@ -370,7 +414,7 @@ function mergeWithDefaults(incoming, defaults, keyField = 'id') {
 // --- EMERGENCIES ---
 export async function fetchEmergencies() {
   try {
-    const res = await fetch(`${API_BASE}/emergencies`);
+    const res = await fetch(`${API_BASE}/emergencies`, { headers: getHeaders() });
     const data = await handleResponse(res, "Failed to fetch emergencies");
     if (Array.isArray(data)) {
       return mergeWithDefaults(data, DEFAULT_EMERGENCIES);
@@ -385,7 +429,7 @@ export async function createEmergency(payload) {
   try {
     const res = await fetch(`${API_BASE}/emergencies`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify(payload)
     });
     return await handleResponse(res, "Failed to create emergency");
@@ -403,7 +447,7 @@ export async function updateEmergencyStatus(id, status) {
   try {
     const res = await fetch(`${API_BASE}/emergencies/${id}/status`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ status })
     });
     return await handleResponse(res, "Failed to update emergency status");
@@ -417,7 +461,7 @@ export async function updateEmergencyStatus(id, status) {
 // --- RESOURCES & ASSIGNMENTS ---
 export async function fetchResources() {
   try {
-    const res = await fetch(`${API_BASE}/resources`);
+    const res = await fetch(`${API_BASE}/resources`, { headers: getHeaders() });
     const data = await handleResponse(res, "Failed to fetch resources");
     if (Array.isArray(data)) {
       return mergeWithDefaults(data, DEFAULT_RESOURCES);
@@ -430,7 +474,7 @@ export async function fetchResources() {
 
 export async function fetchMatchingResources(emergencyId) {
   try {
-    const res = await fetch(`${API_BASE}/resources/match/${emergencyId}`);
+    const res = await fetch(`${API_BASE}/resources/match/${emergencyId}`, { headers: getHeaders() });
     return await handleResponse(res, "Failed to fetch matching resources");
   } catch (err) {
     return { emergency_id: emergencyId, matched_resources: DEFAULT_RESOURCES };
@@ -441,7 +485,7 @@ export async function allocateResource(resourceId, emergencyId) {
   try {
     const res = await fetch(`${API_BASE}/resources/allocate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ resource_id: resourceId, emergency_id: emergencyId })
     });
     return await handleResponse(res, "Failed to allocate resource");
@@ -462,7 +506,7 @@ export async function allocateResource(resourceId, emergencyId) {
 
 export async function fetchAssignments() {
   try {
-    const res = await fetch(`${API_BASE}/resources/assignments`);
+    const res = await fetch(`${API_BASE}/resources/assignments`, { headers: getHeaders() });
     const data = await handleResponse(res, "Failed to fetch assignments");
     if (Array.isArray(data)) {
       return mergeWithDefaults(data, DEFAULT_ASSIGNMENTS);
@@ -476,7 +520,7 @@ export async function fetchAssignments() {
 // --- ORGANIZATIONS MANAGEMENT ---
 export async function fetchOrganizations() {
   try {
-    const res = await fetch(`${API_BASE}/map/vijayawada`);
+    const res = await fetch(`${API_BASE}/map/vijayawada`, { headers: getHeaders() });
     const data = await handleResponse(res, "Failed to fetch map data");
     const orgs = [];
     if (data.hospitals?.features) {
@@ -513,7 +557,7 @@ export async function triggerDynamicReplan(trigger, roadId = "R12", roadStatus =
   try {
     const res = await fetch(`${API_BASE}/decision/replan`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ trigger, road_id: roadId, road_status: roadStatus })
     });
     return await handleResponse(res, "Failed to trigger replanning");
@@ -550,7 +594,7 @@ export async function approveReplanProposal(replanId, approvedBy = "COORD-001", 
   try {
     const res = await fetch(`${API_BASE}/decision/replan/${replanId}/approve`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ approved: true, approved_by: approvedBy, approval_reason: reason })
     });
     return await handleResponse(res, "Failed to approve replan proposal");
@@ -567,7 +611,7 @@ export async function approveReplanProposal(replanId, approvedBy = "COORD-001", 
 // --- POPULATION & MISSING PERSONS ---
 export async function fetchPopulationAccounting() {
   try {
-    const res = await fetch(`${API_BASE}/population/records`);
+    const res = await fetch(`${API_BASE}/population/records`, { headers: getHeaders() });
     const data = await handleResponse(res, "Failed to fetch population records");
     if (Array.isArray(data) && data.length > 0) {
       return mergeWithDefaults(data, DEFAULT_POPULATION_RECORDS);
@@ -580,7 +624,7 @@ export async function fetchPopulationAccounting() {
 
 export async function fetchMissingPersons(includeUnconfirmed = true) {
   try {
-    const res = await fetch(`${API_BASE}/missing-persons?include_unconfirmed=${includeUnconfirmed}`);
+    const res = await fetch(`${API_BASE}/missing-persons?include_unconfirmed=${includeUnconfirmed}`, { headers: getHeaders() });
     const data = await handleResponse(res, "Failed to fetch missing persons");
     if (Array.isArray(data) && data.length > 0) {
       return mergeWithDefaults(data, DEFAULT_MISSING_PERSONS);
@@ -593,7 +637,10 @@ export async function fetchMissingPersons(includeUnconfirmed = true) {
 
 export async function confirmMissingPerson(id) {
   try {
-    const res = await fetch(`${API_BASE}/missing-persons/${id}/confirm`, { method: "POST" });
+    const res = await fetch(`${API_BASE}/missing-persons/${id}/confirm`, {
+      method: "POST",
+      headers: getAuthHeaders()
+    });
     return await handleResponse(res, "Failed to confirm missing person");
   } catch (err) {
     const target = DEFAULT_MISSING_PERSONS.find(p => p.id === id);
@@ -610,7 +657,7 @@ export async function runSimulation(scenarioType, inputParameters = {}) {
   try {
     const res = await fetch(`${API_BASE}/simulations/run`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         title: `Simulation (${scenarioType})`,
         scenario_type: scenarioType,
@@ -634,7 +681,7 @@ export async function queryAgentWorkflow(query, userRole = "COORDINATOR", emerge
   try {
     const res = await fetch(`${API_BASE}/agents/orchestrate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ query, user_role: userRole, emergency_context: emergencyContext })
     });
     return await handleResponse(res, "Failed to query agent workflow");

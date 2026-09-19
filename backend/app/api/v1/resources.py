@@ -11,12 +11,14 @@ router = APIRouter(prefix="/resources", tags=["Resources"])
 
 
 @router.post("", response_model=ResourceResponse)
+@router.post("/", response_model=ResourceResponse, include_in_schema=False)
 def create_resource(r_in: ResourceCreate, db: Session = Depends(get_db)):
     resource = crud.create_resource(db, r_in)
     return resource
 
 
 @router.get("", response_model=List[ResourceResponse])
+@router.get("/", response_model=List[ResourceResponse], include_in_schema=False)
 def get_resources(db: Session = Depends(get_db)):
     return crud.get_all_resources(db)
 

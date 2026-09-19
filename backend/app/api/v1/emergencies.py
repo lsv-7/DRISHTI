@@ -10,6 +10,7 @@ router = APIRouter(prefix="/emergencies", tags=["Emergencies"])
 
 
 @router.post("", response_model=EmergencyResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=EmergencyResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 def create_emergency(e_in: EmergencyCreate, response: Response, db: Session = Depends(get_db)):
     """
     Creates an emergency report with vulnerability snapshot & idempotency support.
@@ -27,6 +28,7 @@ def create_emergency(e_in: EmergencyCreate, response: Response, db: Session = De
 
 
 @router.get("", response_model=List[EmergencyResponse])
+@router.get("/", response_model=List[EmergencyResponse], include_in_schema=False)
 def get_emergencies(db: Session = Depends(get_db)):
     return crud.get_all_emergencies(db)
 

@@ -21,8 +21,16 @@ from app.decision_engine.population_accounting import calculate_population_gap
 
 
 # --- USER & VULNERABILITY REPOSITORY ---
-def get_user_by_email(db: Session, email: str) -> Optional[User]:
+def get_user_by_email(db: Session, email: Optional[str]) -> Optional[User]:
+    if not email:
+        return None
     return db.query(User).filter(User.email == email).first()
+
+
+def get_user_by_phone(db: Session, phone: Optional[str]) -> Optional[User]:
+    if not phone:
+        return None
+    return db.query(User).filter(User.phone == phone).first()
 
 
 def get_user_by_id(db: Session, user_id: str) -> Optional[User]:
@@ -78,6 +86,11 @@ def create_user(db: Session, user_in: UserCreate, user_id: Optional[str] = None)
         full_name=user_in.full_name,
         role=UserRole(user_in.role) if user_in.role in UserRole.__members__ else UserRole.CITIZEN,
         phone=user_in.phone,
+        gender=user_in.gender,
+        address=user_in.address,
+        city=user_in.city,
+        emergency_contact_name=user_in.emergency_contact_name,
+        emergency_contact_phone=user_in.emergency_contact_phone,
         hashed_password=user_in.password # In production, hash password
     )
     db.add(user)

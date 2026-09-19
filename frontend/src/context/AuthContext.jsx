@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth } from '../services/firebase';
 import { signInWithEmailAndPassword, signOut as fbSignOut } from 'firebase/auth';
+import { apiLogin } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -85,6 +86,20 @@ export function AuthProvider({ children }) {
 
   const loginWithDemoAccount = (key) => {
     const account = SEED_ACCOUNTS[key] || SEED_ACCOUNTS.ADMIN;
+    // Attempt background login against backend to acquire live JWT token if backend is reachable
+    apiLogin(
+      account.email,
+      "password",
+      account.role === "ADMIN" ? "ADMIN" : "COORDINATOR",
+      account.full_name
+    ).then(authData => {
+      if (authData?.access_token) {
+        localStorage.setItem("disaster_response_token", authData.access_token);
+      }
+    }).catch(err => {
+      // Offline fallback: silent ignore
+    });
+
     setCurrentUser(account);
     return account;
   };
@@ -92,7 +107,24 @@ export function AuthProvider({ children }) {
   const loginWithCredentials = async (email, password, portalType = "ADMIN", orgType = "HOSPITAL") => {
     setAuthLoading(true);
     try {
-      // Attempt Firebase Login
+      // 1. Attempt FastAPI backend authentication first
+      let backendUser = null;
+      try {
+        const authData = await apiLogin(
+          email,
+          password,
+          portalType === "ADMIN" ? "ADMIN" : "COORDINATOR",
+          email ? email.split('@')[0].toUpperCase() : "DRISHTI User"
+        );
+        if (authData?.access_token) {
+          localStorage.setItem("disaster_response_token", authData.access_token);
+          backendUser = authData.user;
+        }
+      } catch (backendErr) {
+        console.warn("Backend auth unavailable or offline, proceeding with offline credentials:", backendErr);
+      }
+
+      // 2. Attempt Firebase Login if configured
       await signInWithEmailAndPassword(auth, email, password).catch(() => {
         // Fallback for demo credentials if offline
       });
@@ -100,9 +132,9 @@ export function AuthProvider({ children }) {
       const matchedSeed = Object.values(SEED_ACCOUNTS).find(acc => acc.email.toLowerCase() === email.toLowerCase());
       
       const userObj = matchedSeed || {
-        id: `USR-${Date.now()}`,
-        email,
-        full_name: email.split('@')[0].toUpperCase(),
+        id: backendUser?.id || `USR-${Date.now()}`,
+        email: backendUser?.email || email,
+        full_name: backendUser?.full_name || email.split('@')[0].toUpperCase(),
         portal_type: portalType,
         role: portalType === "ADMIN" ? "ADMIN" : "ORGANISATION",
         organization_id: `${orgType}-01`,
@@ -123,6 +155,7 @@ export function AuthProvider({ children }) {
     try {
       await fbSignOut(auth).catch(() => {});
     } catch (e) {}
+    localStorage.removeItem("disaster_response_token");
     setCurrentUser(null);
   };
 
