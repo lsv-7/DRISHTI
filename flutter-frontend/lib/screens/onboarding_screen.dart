@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/vulnerability_profile.dart';
 import '../services/offline_service.dart';
+import '../theme/drishti_theme.dart';
 import '../widgets/educational_disclaimer_card.dart';
 import 'home_screen.dart';
 
@@ -74,9 +75,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final derivedGroup = VulnerabilityProfile.deriveAgeGroup(_age);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Slate 900
+      backgroundColor: DrishtiColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B), // Slate 800
+        backgroundColor: DrishtiColors.surface,
         elevation: 0,
         centerTitle: true,
         title: const Column(
@@ -87,7 +88,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 fontWeight: FontWeight.w800,
                 fontSize: 18,
                 letterSpacing: 1.2,
-                color: Color(0xFFF8FAFC),
+                color: DrishtiColors.deepNavy,
               ),
             ),
             Text(
@@ -96,7 +97,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 fontSize: 9,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 0.8,
-                color: Color(0xFF94A3B8),
+                color: DrishtiColors.secondaryText,
               ),
             ),
           ],
@@ -116,12 +117,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEF4444).withValues(alpha: 0.2), // Emergency Red
+                        color: DrishtiColors.lightBlue,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(
                         Icons.shield_outlined,
-                        color: Color(0xFFEF4444),
+                        color: DrishtiColors.primaryBlue,
                         size: 24,
                       ),
                     ),
@@ -133,7 +134,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           Text(
                             "Vulnerability Profile",
                             style: TextStyle(
-                              color: Colors.white,
+                              color: DrishtiColors.darkNavyText,
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                             ),
@@ -141,7 +142,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           Text(
                             "One-time setup for priority disaster assistance",
                             style: TextStyle(
-                              color: Color(0xFF94A3B8),
+                              color: DrishtiColors.secondaryText,
                               fontSize: 12,
                             ),
                           ),
@@ -166,35 +167,35 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
+                    color: DrishtiColors.surface,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF334155)),
+                    border: Border.all(color: DrishtiColors.border),
                   ),
                   child: Row(
                     children: [
                       Text(
                         "Age: $_age years",
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                        style: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(width: 10),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: derivedGroup == 'ELDERLY'
-                              ? const Color(0xFFEF4444).withValues(alpha: 0.2)
+                              ? DrishtiColors.medicalLightRed
                               : derivedGroup == 'CHILD'
-                                  ? const Color(0xFFF59E0B).withValues(alpha: 0.2)
-                                  : const Color(0xFF3B82F6).withValues(alpha: 0.2),
+                                  ? DrishtiColors.fireLightOrange
+                                  : DrishtiColors.lightBlue,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           derivedGroup,
                           style: TextStyle(
                             color: derivedGroup == 'ELDERLY'
-                                ? const Color(0xFFF87171)
+                                ? DrishtiColors.emergencyRed
                                 : derivedGroup == 'CHILD'
-                                    ? const Color(0xFFFBBF24)
-                                    : const Color(0xFF60A5FA),
+                                    ? DrishtiColors.warningOrange
+                                    : DrishtiColors.primaryBlue,
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
                           ),
@@ -202,11 +203,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ),
                       const Spacer(),
                       IconButton(
-                        icon: const Icon(Icons.remove_circle_outline, color: Color(0xFF94A3B8)),
+                        icon: const Icon(Icons.remove_circle_outline, color: DrishtiColors.secondaryText),
                         onPressed: _age > 1 ? () => setState(() => _age--) : null,
                       ),
                       IconButton(
-                        icon: const Icon(Icons.add_circle_outline, color: Color(0xFF60A5FA)),
+                        icon: const Icon(Icons.add_circle_outline, color: DrishtiColors.primaryBlue),
                         onPressed: _age < 110 ? () => setState(() => _age++) : null,
                       ),
                     ],
@@ -238,7 +239,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         badge: "High Flood Risk",
                         selected: !_canSwim,
                         icon: Icons.not_interested_outlined,
-                        color: const Color(0xFFEF4444),
+                        color: DrishtiColors.emergencyRed,
                         onTap: () => setState(() => _canSwim = false),
                       ),
                     ),
@@ -280,15 +281,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     return FilterChip(
                       label: Text(condition),
                       selected: isSelected,
-                      selectedColor: const Color(0xFF3B82F6).withValues(alpha: 0.3),
-                      checkmarkColor: const Color(0xFF60A5FA),
-                      backgroundColor: const Color(0xFF1E293B),
+                      selectedColor: DrishtiColors.lightBlue,
+                      checkmarkColor: DrishtiColors.primaryBlue,
+                      backgroundColor: DrishtiColors.surface,
                       side: BorderSide(
-                        color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF334155),
+                        color: isSelected ? DrishtiColors.primaryBlue : DrishtiColors.border,
                       ),
                       labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                        color: isSelected ? DrishtiColors.primaryBlue : DrishtiColors.darkNavyText,
                         fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                       onSelected: (selected) {
                         setState(() {
@@ -314,23 +316,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 TextField(
                   controller: _notesController,
                   maxLines: 2,
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  style: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 13),
                   decoration: InputDecoration(
                     hintText: "e.g., Uses hearing aid, requires oxygen concentrator, diabetic insulin...",
-                    hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                    hintStyle: const TextStyle(color: DrishtiColors.secondaryText, fontSize: 12),
                     filled: true,
-                    fillColor: const Color(0xFF1E293B),
+                    fillColor: DrishtiColors.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: Color(0xFF334155)),
+                      borderSide: const BorderSide(color: DrishtiColors.border),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: Color(0xFF334155)),
+                      borderSide: const BorderSide(color: DrishtiColors.border),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: Color(0xFF3B82F6)),
+                      borderSide: const BorderSide(color: DrishtiColors.primaryBlue),
                     ),
                   ),
                 ),
@@ -340,7 +342,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ElevatedButton(
                   onPressed: _saveProfile,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEF4444), // Emergency Red
+                    backgroundColor: DrishtiColors.primaryBlue,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -357,8 +359,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 OutlinedButton(
                   onPressed: _skipOnboarding,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF94A3B8),
-                    side: const BorderSide(color: Color(0xFF334155)),
+                    foregroundColor: DrishtiColors.secondaryText,
+                    side: const BorderSide(color: DrishtiColors.border),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
@@ -386,12 +388,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       children: [
         Row(
           children: [
-            Icon(icon, size: 18, color: const Color(0xFF60A5FA)),
+            Icon(icon, size: 18, color: DrishtiColors.primaryBlue),
             const SizedBox(width: 8),
             Text(
               title,
               style: const TextStyle(
-                color: Color(0xFFF1F5F9),
+                color: DrishtiColors.darkNavyText,
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
               ),
@@ -402,7 +404,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         Text(
           subtitle,
           style: const TextStyle(
-            color: Color(0xFF64748B),
+            color: DrishtiColors.secondaryText,
             fontSize: 11,
           ),
         ),
@@ -418,28 +420,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     String? badge,
     Color? color,
   }) {
-    final activeColor = color ?? const Color(0xFF3B82F6);
+    final activeColor = color ?? DrishtiColors.primaryBlue;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
         decoration: BoxDecoration(
-          color: selected ? activeColor.withValues(alpha: 0.15) : const Color(0xFF1E293B),
+          color: selected ? activeColor.withValues(alpha: 0.12) : DrishtiColors.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? activeColor : const Color(0xFF334155),
+            color: selected ? activeColor : DrishtiColors.border,
             width: selected ? 1.5 : 1,
           ),
         ),
         child: Column(
           children: [
-            Icon(icon, color: selected ? activeColor : const Color(0xFF94A3B8), size: 24),
+            Icon(icon, color: selected ? activeColor : DrishtiColors.secondaryText, size: 24),
             const SizedBox(height: 6),
             Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : const Color(0xFF94A3B8),
+                color: selected ? activeColor : DrishtiColors.darkNavyText,
                 fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                 fontSize: 13,
               ),
@@ -449,7 +451,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: activeColor.withValues(alpha: 0.3),
+                  color: activeColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -471,20 +473,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget _buildMobilityChip(String value, String label, IconData icon) {
     final isSelected = _mobilityStatus == value;
     final color = value == 'BEDRIDDEN' || value == 'WHEELCHAIR'
-        ? const Color(0xFFEF4444)
-        : const Color(0xFF3B82F6);
+        ? DrishtiColors.emergencyRed
+        : DrishtiColors.primaryBlue;
 
     return ChoiceChip(
-      avatar: Icon(icon, size: 16, color: isSelected ? Colors.white : const Color(0xFF94A3B8)),
+      avatar: Icon(icon, size: 16, color: isSelected ? color : DrishtiColors.secondaryText),
       label: Text(label),
       selected: isSelected,
-      selectedColor: color.withValues(alpha: 0.25),
-      backgroundColor: const Color(0xFF1E293B),
+      selectedColor: color.withValues(alpha: 0.15),
+      backgroundColor: DrishtiColors.surface,
       side: BorderSide(
-        color: isSelected ? color : const Color(0xFF334155),
+        color: isSelected ? color : DrishtiColors.border,
       ),
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+        color: isSelected ? color : DrishtiColors.darkNavyText,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         fontSize: 12,
       ),

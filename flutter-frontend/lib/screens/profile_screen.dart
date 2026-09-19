@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/vulnerability_profile.dart';
 import '../services/offline_service.dart';
+import '../theme/drishti_theme.dart';
 import '../widgets/educational_disclaimer_card.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -65,7 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          backgroundColor: Color(0xFF10B981), // Emerald Green
+          backgroundColor: DrishtiColors.successGreen,
           content: Text("Vulnerability profile updated. Applied to future emergency dispatches."),
           behavior: SnackBarBehavior.floating,
         ),
@@ -81,14 +82,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final derivedGroup = VulnerabilityProfile.deriveAgeGroup(_age);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: DrishtiColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: DrishtiColors.surface,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: DrishtiColors.darkNavyText),
         title: const Text(
           "My Vulnerability Profile",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: DrishtiColors.darkNavyText),
         ),
-        elevation: 0,
+        shape: const Border(
+          bottom: BorderSide(color: DrishtiColors.border, width: 1),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -103,19 +108,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
+                color: DrishtiColors.lightBlue,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF334155)),
+                border: Border.all(color: DrishtiColors.primaryBlue.withValues(alpha: 0.2)),
               ),
               child: const Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.help_outline_rounded, color: Color(0xFF94A3B8), size: 20),
+                  Icon(Icons.help_outline_rounded, color: DrishtiColors.primaryBlue, size: 20),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       "Why this information is collected: During flood or crisis response, command centers match specialized rescue resources (medical boat teams, wheelchair vans, high-priority dispatch) based on your individual mobility and health requirements.",
-                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, height: 1.35),
+                      style: TextStyle(color: DrishtiColors.deepNavyBlue, fontSize: 12, height: 1.35),
                     ),
                   ),
                 ],
@@ -131,18 +136,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF0B132B),
+                color: DrishtiColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF1E293B)),
+                border: Border.all(color: DrishtiColors.border),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.history_toggle_off_rounded, color: Color(0xFF64748B), size: 16),
+                  Icon(Icons.history_toggle_off_rounded, color: DrishtiColors.neutralGrey, size: 16),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       "Note: Updates apply to future emergency reports. Past emergency records retain their original historical snapshots.",
-                      style: TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                      style: TextStyle(color: DrishtiColors.neutralGrey, fontSize: 11),
                     ),
                   ),
                 ],
@@ -156,35 +161,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
+                color: DrishtiColors.surface,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF334155)),
+                border: Border.all(color: DrishtiColors.border),
               ),
               child: Row(
                 children: [
                   Text(
                     "$_age years",
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    style: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(width: 10),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
+                      color: DrishtiColors.lightBlue,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       derivedGroup,
-                      style: const TextStyle(color: Color(0xFF60A5FA), fontSize: 11, fontWeight: FontWeight.bold),
+                      style: const TextStyle(color: DrishtiColors.primaryBlue, fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.remove_circle_outline, color: Color(0xFF94A3B8)),
+                    icon: const Icon(Icons.remove_circle_outline, color: DrishtiColors.neutralGrey),
                     onPressed: _age > 1 ? () => setState(() => _age--) : null,
                   ),
                   IconButton(
-                    icon: const Icon(Icons.add_circle_outline, color: Color(0xFF60A5FA)),
+                    icon: const Icon(Icons.add_circle_outline, color: DrishtiColors.primaryBlue),
                     onPressed: _age < 110 ? () => setState(() => _age++) : null,
                   ),
                 ],
@@ -202,6 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     label: "Can Swim",
                     selected: _canSwim,
                     icon: Icons.pool_outlined,
+                    color: DrishtiColors.successGreen,
                     onTap: () => setState(() => _canSwim = true),
                   ),
                 ),
@@ -211,7 +217,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     label: "Cannot Swim",
                     selected: !_canSwim,
                     icon: Icons.not_interested_outlined,
-                    color: const Color(0xFFEF4444),
+                    color: DrishtiColors.emergencyRed,
                     onTap: () => setState(() => _canSwim = false),
                   ),
                 ),
@@ -245,14 +251,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 return FilterChip(
                   label: Text(condition),
                   selected: isSelected,
-                  selectedColor: const Color(0xFF3B82F6).withValues(alpha: 0.3),
-                  checkmarkColor: const Color(0xFF60A5FA),
-                  backgroundColor: const Color(0xFF1E293B),
+                  selectedColor: DrishtiColors.lightBlue,
+                  checkmarkColor: DrishtiColors.primaryBlue,
+                  backgroundColor: DrishtiColors.surface,
                   side: BorderSide(
-                    color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF334155),
+                    color: isSelected ? DrishtiColors.primaryBlue : DrishtiColors.border,
                   ),
                   labelStyle: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                    color: isSelected ? DrishtiColors.primaryBlue : DrishtiColors.darkNavyText,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     fontSize: 12,
                   ),
                   onSelected: (selected) {
@@ -275,19 +282,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextField(
               controller: _notesController,
               maxLines: 2,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              style: const TextStyle(color: DrishtiColors.darkNavyText, fontSize: 13),
               decoration: InputDecoration(
                 hintText: "e.g., Uses walking cane, requires continuous dialysis, etc.",
-                hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                hintStyle: const TextStyle(color: DrishtiColors.neutralGrey, fontSize: 12),
                 filled: true,
-                fillColor: const Color(0xFF1E293B),
+                fillColor: DrishtiColors.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFF334155)),
+                  borderSide: const BorderSide(color: DrishtiColors.border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFF334155)),
+                  borderSide: const BorderSide(color: DrishtiColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: DrishtiColors.primaryBlue, width: 1.5),
                 ),
               ),
             ),
@@ -297,10 +308,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ElevatedButton(
               onPressed: _isSaving ? null : _updateProfile,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFEF4444),
+                backgroundColor: DrishtiColors.primaryBlue,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
               ),
               child: _isSaving
                   ? const SizedBox(
@@ -322,22 +334,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildStatusHeader(ProfileStatus status) {
     Color statusColor;
+    Color statusBg;
     String statusText;
     IconData statusIcon;
 
     switch (status) {
       case ProfileStatus.completed:
-        statusColor = const Color(0xFF10B981);
+        statusColor = DrishtiColors.successGreen;
+        statusBg = DrishtiColors.softGreen;
         statusText = "Completed";
         statusIcon = Icons.check_circle_outline;
         break;
       case ProfileStatus.defaultProfile:
-        statusColor = const Color(0xFFF59E0B);
+        statusColor = DrishtiColors.alertYellow;
+        statusBg = DrishtiColors.warningLight;
         statusText = "Default Profile (Onboarding Skipped)";
         statusIcon = Icons.info_outline;
         break;
       case ProfileStatus.notCompleted:
-        statusColor = const Color(0xFFEF4444);
+        statusColor = DrishtiColors.emergencyRed;
+        statusBg = DrishtiColors.emergencyLight;
         statusText = "Not Completed";
         statusIcon = Icons.warning_amber_rounded;
         break;
@@ -346,7 +362,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: statusColor.withValues(alpha: 0.15),
+        color: statusBg,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: statusColor.withValues(alpha: 0.5)),
       ),
@@ -358,7 +374,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Profile State", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                const Text("Profile State", style: TextStyle(color: DrishtiColors.neutralGrey, fontSize: 11)),
                 Text(
                   statusText,
                   style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 13),
@@ -375,8 +391,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Text(
       label,
       style: const TextStyle(
-        color: Color(0xFFF1F5F9),
-        fontWeight: FontWeight.w600,
+        color: DrishtiColors.darkNavyText,
+        fontWeight: FontWeight.bold,
         fontSize: 13,
       ),
     );
@@ -389,29 +405,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required VoidCallback onTap,
     Color? color,
   }) {
-    final activeColor = color ?? const Color(0xFF3B82F6);
+    final activeColor = color ?? DrishtiColors.primaryBlue;
+    final activeBg = (activeColor == DrishtiColors.emergencyRed)
+        ? DrishtiColors.emergencyLight
+        : (activeColor == DrishtiColors.successGreen
+            ? DrishtiColors.softGreen
+            : DrishtiColors.lightBlue);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
         decoration: BoxDecoration(
-          color: selected ? activeColor.withValues(alpha: 0.15) : const Color(0xFF1E293B),
+          color: selected ? activeBg : DrishtiColors.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? activeColor : const Color(0xFF334155),
+            color: selected ? activeColor : DrishtiColors.border,
             width: selected ? 1.5 : 1,
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: selected ? activeColor : const Color(0xFF94A3B8), size: 20),
+            Icon(icon, color: selected ? activeColor : DrishtiColors.neutralGrey, size: 20),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : const Color(0xFF94A3B8),
+                color: selected ? activeColor : DrishtiColors.darkNavyText,
                 fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                 fontSize: 13,
               ),
@@ -424,19 +446,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildMobilityChip(String value, String label, IconData icon) {
     final isSelected = _mobilityStatus == value;
-    final color = value == 'BEDRIDDEN' || value == 'WHEELCHAIR'
-        ? const Color(0xFFEF4444)
-        : const Color(0xFF3B82F6);
+    final isAlert = value == 'BEDRIDDEN' || value == 'WHEELCHAIR';
+    final activeColor = isAlert ? DrishtiColors.emergencyRed : DrishtiColors.primaryBlue;
+    final activeBg = isAlert ? DrishtiColors.emergencyLight : DrishtiColors.lightBlue;
 
     return ChoiceChip(
-      avatar: Icon(icon, size: 16, color: isSelected ? Colors.white : const Color(0xFF94A3B8)),
+      avatar: Icon(icon, size: 16, color: isSelected ? activeColor : DrishtiColors.neutralGrey),
       label: Text(label),
       selected: isSelected,
-      selectedColor: color.withValues(alpha: 0.25),
-      backgroundColor: const Color(0xFF1E293B),
-      side: BorderSide(color: isSelected ? color : const Color(0xFF334155)),
+      selectedColor: activeBg,
+      backgroundColor: DrishtiColors.surface,
+      side: BorderSide(color: isSelected ? activeColor : DrishtiColors.border),
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+        color: isSelected ? activeColor : DrishtiColors.darkNavyText,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         fontSize: 12,
       ),

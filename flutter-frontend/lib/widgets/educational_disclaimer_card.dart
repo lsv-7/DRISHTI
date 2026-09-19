@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/drishti_theme.dart';
 
 /// Mandatory Educational Notice Widget for DRISHTI AI
 /// 
@@ -18,11 +19,11 @@ class EducationalDisclaimerCard extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(compact ? 10.0 : 14.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B), // Slate 800
+        color: DrishtiColors.lightBlue.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(10.0),
         border: Border.all(
-          color: const Color(0xFF3B82F6).withValues(alpha: 0.4), // Accent blue
-          width: 1.2,
+          color: DrishtiColors.primaryBlue.withValues(alpha: 0.25),
+          width: 1.0,
         ),
       ),
       child: Row(
@@ -30,8 +31,8 @@ class EducationalDisclaimerCard extends StatelessWidget {
         children: [
           const Icon(
             Icons.info_outline_rounded,
-            color: Color(0xFF60A5FA), // Light blue 400
-            size: 22,
+            color: DrishtiColors.primaryBlue,
+            size: 20,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -41,8 +42,8 @@ class EducationalDisclaimerCard extends StatelessWidget {
                 const Text(
                   "Operational Priority Heuristic Notice",
                   style: TextStyle(
-                    color: Color(0xFFF1F5F9),
-                    fontWeight: FontWeight.w600,
+                    color: DrishtiColors.darkNavyText,
+                    fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
                 ),
@@ -50,7 +51,7 @@ class EducationalDisclaimerCard extends StatelessWidget {
                 const Text(
                   "Vulnerability factors are used strictly as operational priority heuristics for emergency response and resource allocation, not clinical medical triage.",
                   style: TextStyle(
-                    color: Color(0xFF94A3B8), // Slate 400
+                    color: DrishtiColors.secondaryText,
                     fontSize: 12,
                     height: 1.35,
                   ),
@@ -60,7 +61,7 @@ class EducationalDisclaimerCard extends StatelessWidget {
                   const Text(
                     "This information ensures response coordinators dispatch suitable resources (e.g., medical boat teams, wheelchair transport) to citizens who need them most.",
                     style: TextStyle(
-                      color: Color(0xFF64748B), // Slate 500
+                      color: DrishtiColors.secondaryText,
                       fontSize: 11,
                       height: 1.3,
                       fontStyle: FontStyle.italic,

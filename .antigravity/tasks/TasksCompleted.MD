@@ -684,6 +684,79 @@ Date: 2026-09-19
 3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/ -v` -> **13/13 PASSED in 3.14s**.
 4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 352ms**.
 
+---
+
+# T059 — Show Local Pending/Sync Status in Flutter with DRISHTI Design System
+
+## Completed Work
+- **DRISHTI Color Palette & Theme System** (`flutter-frontend/lib/theme/drishti_theme.dart`):
+  - Centralized palette matching the official DRISHTI mockup design specification:
+    - Primary Brand: `#2563EB` (Primary Blue), `#1E3A8A` (Deep Navy), `#0F172A` (Dark Navy Text).
+    - Emergency / Alert: `#EF4444` (Emergency Red), `#F97316` (Warning Orange), `#FBBF24` (Alert Yellow).
+    - Success / Safety: `#22C55E` (Success Green), `#DCFCE7` (Soft Green).
+    - Supporting: `#DBEAFE` (Light Blue), `#8B5CF6` (Purple Accent).
+    - Neutrals: `#F8FAFC` (Background), `#FFFFFF` (Surface), `#E2E8F0` (Border), `#64748B` (Secondary Text).
+    - Semantic Light Tints: `#FEE2E2` (Medical / SOS), `#FED7AA` (Fire / Warning), `#EDE9FE` (Missing / Accent), `#FEF3C7` (Alert / Pending), `#F1F5F9` (Neutral Light).
+  - Defined `DrishtiTheme.lightTheme` with matching AppBar, Cards, InputFields, ElevateButtons, OutlinedButtons, and Badges.
+- **Truthful Local Pending & Sync Queue Status UI** (`flutter-frontend/lib/screens/home_screen.dart`):
+  - 2x2 Hero Action Grid matching Mockup Screen 4:
+    - SOS Emergency in Medical Light Red (`#FEE2E2` / `#EF4444`).
+    - Request Help in Light Blue (`#DBEAFE` / `#2563EB`).
+    - Report Missing Person in Light Purple (`#EDE9FE` / `#8B5CF6`).
+    - Find Shelter Nearby in Soft Green (`#DCFCE7` / `#22C55E`).
+  - Offline Mode Checklist matching Mockup Screens 7 & 8:
+    - Displays "You're Offline" with red wifi-off badge.
+    - Displays 3-item checklist: "Request saved locally", "Stored in offline queue (X Pending)", and "Will sync automatically when connection returns".
+  - Online Synchronized / Pending Status:
+    - Shows dynamic status indicator badge (PENDING in `#FBBF24`, SYNCED in `#22C55E`, FAILED in `#EF4444`).
+    - Provides a "Sync Now" button when online with pending operations.
+    - Displays a dismissible/contextual warning banner if `lastSyncError` is present.
+- **Application-Wide Screen Restyling**:
+  - `main.dart`: Integrated `DrishtiTheme.lightTheme`.
+  - `educational_disclaimer_card.dart`: Styled with `#DBEAFE` background, `#1E3A8A` text, and `#2563EB` info badge.
+  - `emergency_reporting_screen.dart`: Light theme, sector selection modal in clean surface with `#2563EB` indicators.
+  - `emergency_confirmation_screen.dart`: Restyled with green confirmation for online transmission and orange badge + offline checklist for local saves.
+  - `emergency_tracking_screen.dart`: Restyled timeline cards, status headers, 404 cards, and offline warnings.
+  - `onboarding_screen.dart` & `profile_screen.dart`: Restyled age steppers, swimming ability cards, mobility chips, medical conditions filter chips, and action buttons with the light theme palette.
+- **Automated Test Suite** (`flutter-frontend/test/pending_sync_status_test.dart`):
+  - 5 automated widget tests verifying synchronized state rendering, offline checklist rendering, "Sync Now" button rendering and behavior, error warning display, and color palette invariants.
+
+### Files changed
+- `flutter-frontend/lib/theme/drishti_theme.dart` (NEW)
+- `flutter-frontend/lib/main.dart` (MODIFIED)
+- `flutter-frontend/lib/widgets/educational_disclaimer_card.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/home_screen.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/emergency_reporting_screen.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/emergency_confirmation_screen.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/emergency_tracking_screen.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/onboarding_screen.dart` (MODIFIED)
+- `flutter-frontend/lib/screens/profile_screen.dart` (MODIFIED)
+- `flutter-frontend/test/pending_sync_status_test.dart` (NEW)
+- `.antigravity/tasks/Tasks.MD` (MODIFIED)
+- `.antigravity/tasks/TasksCompleted.MD` (MODIFIED)
+
+---
+
+## Verification Summary
+
+1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 2.2s)**.
+2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **135/135 tests PASSED (0.06s)** across all 13 test suites:
+   - `test/pending_sync_status_test.dart` (5/5 PASSED)
+   - `test/idempotent_sync_test.dart` (6/6 PASSED)
+   - `test/sync_service_test.dart` (21/21 PASSED)
+   - `test/connectivity_service_test.dart` (13/13 PASSED)
+   - `test/pending_operation_queue_test.dart` (14/14 PASSED)
+   - `test/local_emergency_repository_test.dart` (14/14 PASSED)
+   - `test/database_test.dart` (10/10 PASSED)
+   - `test/validation_and_error_states_test.dart` (12/12 PASSED)
+   - `test/emergency_tracking_test.dart` (11/11 PASSED)
+   - `test/location_capture_test.dart` (14/14 PASSED)
+   - `test/emergency_reporting_test.dart` (7/7 PASSED)
+   - `test/emergency_snapshot_test.dart` (4/4 PASSED)
+   - `test/vulnerability_profile_test.dart` (4/4 PASSED)
+3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/ -v` -> **13/13 PASSED in 2.02s**.
+4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 388ms**.
+
 
 
 
