@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../database/app_database.dart';
@@ -266,6 +266,19 @@ class SyncService {
           httpStatusCode: statusCode,
           errorMessage: errorMsg,
         );
+      } else if (statusCode == 409) {
+        final errorMsg =
+            'Idempotency conflict ($statusCode): ${response.body}';
+        await queue.markFailed(operation.id, errorMsg);
+        await _recordEmergencySyncError(operation, errorMsg);
+
+        return SyncResult.permanentFailure(
+          operationId: operation.id,
+          emergencyLocalId: operation.emergencyLocalId,
+          idempotencyKey: operation.idempotencyKey,
+          httpStatusCode: statusCode,
+          errorMessage: errorMsg,
+        );
       } else {
         final errorMsg =
             'Permanent HTTP failure ($statusCode): ${response.body}';
@@ -367,6 +380,7 @@ class SyncService {
         vulnerabilityScore:
             (responseData['vulnerability_score'] as num?)?.toDouble(),
         lastSyncError: null,
+        clearSyncError: true,
         updatedAt: DateTime.now().toUtc(),
       );
     }

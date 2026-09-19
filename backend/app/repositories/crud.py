@@ -1,6 +1,7 @@
 import uuid
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from app.models.domain import (
     User, VulnerabilityProfile, Emergency, Resource, Assignment,
     Road, Shelter, ShelterRegistration, DisasterZone, DisasterZonePolicy,
@@ -139,12 +140,50 @@ def get_policies_for_zone(db: Session, zone_id: str) -> List[DisasterZonePolicy]
     return db.query(DisasterZonePolicy).filter(DisasterZonePolicy.zone_id == zone_id).all()
 
 
+class IdempotencyConflictError(Exception):
+    """Raised when an emergency creation is attempted with an existing idempotency key but differing payload attributes."""
+    pass
+
+
+def _is_payload_equivalent(existing: Emergency, e_in: EmergencyCreate) -> bool:
+    """Verifies whether incoming payload is functionally identical to the existing record."""
+    if existing.category != e_in.category:
+        return False
+    if existing.title.strip().lower() != e_in.title.strip().lower():
+        return False
+    if abs(existing.latitude - e_in.latitude) > 1e-4:
+        return False
+    if abs(existing.longitude - e_in.longitude) > 1e-4:
+        return False
+    if existing.affected_count != e_in.affected_count:
+        return False
+    existing_desc = (existing.description or "").strip()
+    incoming_desc = (e_in.description or "").strip()
+    if existing_desc != incoming_desc:
+        return False
+    # Check vulnerability snapshot if provided
+    if e_in.vulnerability_snapshot is not None and existing.vulnerability_snapshot is not None:
+        v_in = e_in.vulnerability_snapshot.model_dump()
+        for field in ("age_group", "mobility_status", "can_swim", "medical_conditions"):
+            if v_in.get(field) != existing.vulnerability_snapshot.get(field):
+                return False
+    elif (e_in.vulnerability_snapshot is not None) != (existing.vulnerability_snapshot is not None):
+        return False
+
+    return True
+
+
 # --- EMERGENCY REPOSITORY ---
 def create_emergency(db: Session, e_in: EmergencyCreate, user_id: Optional[str] = None) -> Emergency:
-    # Check idempotency key if provided
+    # 1. Check idempotency key if provided
     if e_in.idempotency_key:
         existing = db.query(Emergency).filter(Emergency.idempotency_key == e_in.idempotency_key).first()
         if existing:
+            if not _is_payload_equivalent(existing, e_in):
+                raise IdempotencyConflictError(
+                    f"Idempotency key conflict: key '{e_in.idempotency_key}' is already associated with an emergency with different attributes."
+                )
+            existing._is_new = False
             return existing
 
     # Resolve disaster zone
@@ -178,13 +217,29 @@ def create_emergency(db: Session, e_in: EmergencyCreate, user_id: Optional[str] 
         priority_reasons=priority_reasons,
         vulnerability_score=v_score,
         vulnerability_factors=v_factors,
+        vulnerability_snapshot=v_dict,
         affected_count=e_in.affected_count,
         idempotency_key=e_in.idempotency_key
     )
-    db.add(emergency)
-    db.commit()
-    db.refresh(emergency)
-    return emergency
+
+    try:
+        db.add(emergency)
+        db.commit()
+        db.refresh(emergency)
+        emergency._is_new = True
+        return emergency
+    except IntegrityError:
+        db.rollback()
+        if e_in.idempotency_key:
+            existing = db.query(Emergency).filter(Emergency.idempotency_key == e_in.idempotency_key).first()
+            if existing:
+                if not _is_payload_equivalent(existing, e_in):
+                    raise IdempotencyConflictError(
+                        f"Idempotency key conflict: key '{e_in.idempotency_key}' is already associated with an emergency with different attributes."
+                    )
+                existing._is_new = False
+                return existing
+        raise
 
 
 def get_all_emergencies(db: Session) -> List[Emergency]:

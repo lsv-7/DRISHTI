@@ -618,6 +618,73 @@ Date: 2026-09-19
 3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/` -> **5/5 PASSED in 0.06s**.
 4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 316ms**.
 
+---
+
+# T057 — Implement Idempotent Synchronization
+
+## Completed Work
+- **Database Unique Constraint & Model** (`backend/app/models/domain.py`):
+  - Ensured `Emergency.idempotency_key` is unique and indexed (`Column(String, unique=True, index=True, nullable=True)`).
+  - Added `Emergency.vulnerability_snapshot = Column(JSON, nullable=True)` to durably persist the raw vulnerability profile snapshot alongside priority metrics for complete historical auditability.
+- **API Response Schema** (`backend/app/schemas/domain.py`):
+  - Updated `EmergencyResponse` to include optional `vulnerability_snapshot: Optional[Dict[str, Any]] = None` and `idempotency_key: Optional[str] = None`.
+- **Backend CRUD Idempotency Engine** (`backend/app/repositories/crud.py`):
+  - Defined `IdempotencyConflictError(Exception)`.
+  - Implemented `_is_payload_equivalent(existing: Emergency, e_in: EmergencyCreate) -> bool` to verify semantic identity:
+    - Matches category, case-insensitive trimmed title, geographic coordinates within 1e-4 tolerance, affected count, trimmed description, and vulnerability snapshot attributes.
+  - In `create_emergency(db, e_in)`:
+    - Pre-flight lookup: if `e_in.idempotency_key` exists, checks equivalence. If identical, returns existing authoritative entity with `_is_new = False` without re-evaluating priority or mutating timestamps. If differing, raises `IdempotencyConflictError`.
+    - Concurrent insert collision handling: wraps `db.commit()` in `try...except IntegrityError`. Rolls back and retrieves the concurrently committed record, checks equivalence, and returns it (or raises conflict).
+- **FastAPI Endpoint Idempotency Integration** (`backend/app/api/v1/emergencies.py`):
+  - Decorated `@router.post("", response_model=EmergencyResponse, status_code=status.HTTP_201_CREATED)`.
+  - Injected `response: Response`.
+  - Catches `IdempotencyConflictError` and translates it into HTTP 409 Conflict with descriptive detail message.
+  - If `emergency._is_new` is `False`, adjusts `response.status_code = status.HTTP_200_OK`.
+- **Flutter SyncService & Drift Database** (`flutter-frontend/lib/services/sync_service.dart`, `flutter-frontend/lib/database/app_database.dart`, `flutter-frontend/lib/repositories/local_emergency_repository.dart`):
+  - Added explicit HTTP 409 Conflict handling in `SyncService.syncOperation()`, marking the operation `FAILED` (`isRetryable: false`) and recording the error locally.
+  - Added `clearSyncError: true` support to `updateEmergencyStatus` in `app_database.dart` and repository, ensuring that previous sync errors are cleared to `null` upon successful reconciliation.
+- **Backend Pytest Suite** (`backend/app/tests/test_idempotency.py`):
+  - 8 automated tests covering initial creation (201), idempotent duplicate replay (200), conflict detection across category, coordinates, affected count, and vulnerability snapshot (409), concurrent multi-threaded submission race conditions (exactly 1 record created), and non-idempotent creation.
+- **Flutter Idempotency Test Suite** (`flutter-frontend/test/idempotent_sync_test.dart`):
+  - 6 automated integration and unit tests covering retry after lost connection, duplicate server response reconciliation without SQLite duplication, vulnerability profile immutability across profile updates, HTTP 409 Conflict handling, key invariance across attempts, and FIFO preservation.
+
+### Files changed
+- `backend/app/models/domain.py` (MODIFIED)
+- `backend/app/schemas/domain.py` (MODIFIED)
+- `backend/app/repositories/crud.py` (MODIFIED)
+- `backend/app/api/v1/emergencies.py` (MODIFIED)
+- `backend/app/core/database.py` (MODIFIED)
+- `backend/app/agents/workflow.py` (MODIFIED)
+- `backend/app/tests/test_idempotency.py` (NEW)
+- `flutter-frontend/lib/database/app_database.dart` (MODIFIED)
+- `flutter-frontend/lib/repositories/local_emergency_repository.dart` (MODIFIED)
+- `flutter-frontend/lib/services/sync_service.dart` (MODIFIED)
+- `flutter-frontend/test/idempotent_sync_test.dart` (NEW)
+- `.antigravity/tasks/Tasks.MD` (MODIFIED)
+- `.antigravity/tasks/TasksCompleted.MD` (MODIFIED)
+
+---
+
+## Verification Summary
+
+1. **Flutter Analysis**: `flutter analyze` inside `flutter-frontend/` -> **No issues found! (ran in 2.1s)**.
+2. **Flutter Test Suite**: `flutter test` inside `flutter-frontend/` -> **130/130 tests PASSED** across all 12 test suites:
+   - `test/idempotent_sync_test.dart` (6/6 PASSED)
+   - `test/sync_service_test.dart` (21/21 PASSED)
+   - `test/connectivity_service_test.dart` (13/13 PASSED)
+   - `test/pending_operation_queue_test.dart` (14/14 PASSED)
+   - `test/local_emergency_repository_test.dart` (14/14 PASSED)
+   - `test/database_test.dart` (10/10 PASSED)
+   - `test/validation_and_error_states_test.dart` (12/12 PASSED)
+   - `test/emergency_tracking_test.dart` (11/11 PASSED)
+   - `test/location_capture_test.dart` (14/14 PASSED)
+   - `test/emergency_reporting_test.dart` (7/7 PASSED)
+   - `test/emergency_snapshot_test.dart` (4/4 PASSED)
+   - `test/vulnerability_profile_test.dart` (4/4 PASSED)
+3. **Backend Tests**: Executed `py -3.14 -m pytest app/tests/ -v` -> **13/13 PASSED in 3.14s**.
+4. **Frontend Production Build**: Executed `npm run build` inside `frontend/` -> **SUCCESSFUL BUILD in 352ms**.
+
+
 
 
 

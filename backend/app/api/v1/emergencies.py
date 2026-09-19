@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.schemas.domain import EmergencyCreate, EmergencyResponse, EmergencyStatusUpdate
@@ -9,14 +9,21 @@ from app.models.domain import EmergencyStatus
 router = APIRouter(prefix="/emergencies", tags=["Emergencies"])
 
 
-@router.post("", response_model=EmergencyResponse)
-def create_emergency(e_in: EmergencyCreate, db: Session = Depends(get_db)):
+@router.post("", response_model=EmergencyResponse, status_code=status.HTTP_201_CREATED)
+def create_emergency(e_in: EmergencyCreate, response: Response, db: Session = Depends(get_db)):
     """
     Creates an emergency report with vulnerability snapshot & idempotency support.
     Automatically calculates vulnerability-adjusted priority score and resolves disaster zone.
+    Returns 201 Created for new reports, 200 OK for idempotent duplicate replays,
+    and 409 Conflict if payload conflicts with an existing key.
     """
-    emergency = crud.create_emergency(db, e_in)
-    return emergency
+    try:
+        emergency = crud.create_emergency(db, e_in)
+        if getattr(emergency, "_is_new", True) is False:
+            response.status_code = status.HTTP_200_OK
+        return emergency
+    except crud.IdempotencyConflictError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
 @router.get("", response_model=List[EmergencyResponse])

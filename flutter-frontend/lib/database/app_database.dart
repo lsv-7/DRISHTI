@@ -94,6 +94,7 @@ class AppDatabase extends _$AppDatabase {
     List<String>? priorityReasons,
     double? vulnerabilityScore,
     String? lastSyncError,
+    bool clearSyncError = false,
     DateTime? updatedAt,
   }) {
     return (update(emergencies)..where((tbl) => tbl.localId.equals(localId)))
@@ -112,9 +113,11 @@ class AppDatabase extends _$AppDatabase {
         vulnerabilityScore: vulnerabilityScore != null
             ? Value(vulnerabilityScore)
             : const Value.absent(),
-        lastSyncError: lastSyncError != null
-            ? Value(lastSyncError)
-            : const Value.absent(),
+        lastSyncError: clearSyncError
+            ? const Value(null)
+            : (lastSyncError != null
+                ? Value(lastSyncError)
+                : const Value.absent()),
         updatedAt: Value(updatedAt ?? DateTime.now()),
       ),
     );

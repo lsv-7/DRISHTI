@@ -151,8 +151,9 @@ class Emergency(Base):
     priority_reasons = Column(JSON, default=list)
     vulnerability_score = Column(Float, default=0.0)
     vulnerability_factors = Column(JSON, default=dict)
+    vulnerability_snapshot = Column(JSON, nullable=True)
     affected_count = Column(Integer, default=1)
-    idempotency_key = Column(String, unique=True, nullable=True)
+    idempotency_key = Column(String, unique=True, index=True, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

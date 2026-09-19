@@ -8,12 +8,24 @@ db_url = settings.DATABASE_URL
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-engine = create_engine(
-    db_url,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-)
+if db_url.startswith("sqlite"):
+    engine = create_engine(
+        db_url,
+        connect_args={"check_same_thread": False},
+    )
+else:
+    try:
+        engine = create_engine(
+            db_url,
+            pool_pre_ping=True,
+            pool_size=10,
+            max_overflow=20,
+        )
+    except Exception:
+        engine = create_engine(
+            "sqlite:///./data/drishti.db",
+            connect_args={"check_same_thread": False},
+        )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

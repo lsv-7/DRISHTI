@@ -279,6 +279,7 @@ class LocalEmergencyRepository {
     List<String>? priorityReasons,
     double? vulnerabilityScore,
     String? lastSyncError,
+    bool clearSyncError = false,
     DateTime? updatedAt,
   }) {
     return database.updateEmergencyStatus(
@@ -291,6 +292,7 @@ class LocalEmergencyRepository {
       priorityReasons: priorityReasons,
       vulnerabilityScore: vulnerabilityScore,
       lastSyncError: lastSyncError,
+      clearSyncError: clearSyncError,
       updatedAt: updatedAt,
     );
   }

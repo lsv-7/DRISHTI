@@ -131,7 +131,9 @@ class EmergencyResponse(BaseModel):
     priority_reasons: List[str] = Field(default_factory=list)
     vulnerability_score: float
     vulnerability_factors: Dict[str, Any] = Field(default_factory=dict)
+    vulnerability_snapshot: Optional[Dict[str, Any]] = None
     affected_count: int
+    idempotency_key: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

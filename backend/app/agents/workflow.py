@@ -1,5 +1,8 @@
 from typing import Dict, Any, List, TypedDict, Optional
-from langgraph.graph import StateGraph, END
+try:
+    from langgraph.graph import StateGraph, END
+except ImportError:
+    StateGraph, END = None, None
 from app.decision_engine.vulnerability import calculate_vulnerability_score
 from app.decision_engine.priority import calculate_priority_score
 from app.decision_engine.matching import rank_matching_resources
